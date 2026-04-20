@@ -21,6 +21,7 @@ export default class GameScene extends Phaser.Scene {
         this.interventionAmount = 200; // Default intervention amount
         this.score = 0; // Player score
         this.winScore = 1000; // Score needed to win
+        this.maxMonths = 12; // 1 year to win
         this.currentLevel = 1; // Current level
         this.highScore = 0; // High score from save
     }
@@ -56,26 +57,34 @@ export default class GameScene extends Phaser.Scene {
         this.createTorredelSol(width / 2, height / 2 - 100);
         
         // Title
-        this.add.text(width / 2, 40, 'GUARDIÁN DE LA ESTABILIDAD', {
-            font: 'bold 28px Courier New',
+        this.add.text(width / 2, 30, 'GUARDIÁN DE LA ESTABILIDAD', {
+            font: 'bold 24px Courier New',
             fill: '#00ffff',
             stroke: '#0a0e1a',
             strokeThickness: 4
         }).setOrigin(0.5);
         
-        this.add.text(width / 2, 75, 'Banco Central de Reserva del Perú', {
-            font: '16px Courier New',
+        this.add.text(width / 2, 58, 'Banco Central de Reserva del Perú', {
+            font: '14px Courier New',
             fill: '#ffd700',
             stroke: '#0a0e1a',
             strokeThickness: 2
         }).setOrigin(0.5);
         
+        // Level indicator (top right)
+        this.levelText = this.add.text(width / 2, 80, `NIVEL ${this.currentLevel}`, {
+            font: 'bold 12px Courier New',
+            fill: '#ff00ff',
+            stroke: '#000000',
+            strokeThickness: 2
+        }).setOrigin(0.5);
+        
         // Audio activation button
-        const audioBtn = this.add.text(width / 2, 110, '🔊 CLICK AQUÍ PARA ACTIVAR AUDIO', {
-            font: 'bold 14px Courier New',
+        const audioBtn = this.add.text(width / 2, 100, '🔊 CLICK PARA AUDIO', {
+            font: 'bold 11px Courier New',
             fill: '#ffff00',
             backgroundColor: '#ff0000',
-            padding: { x: 15, y: 8 }
+            padding: { x: 12, y: 6 }
         }).setOrigin(0.5);
         audioBtn.setInteractive({ useHandCursor: true });
         audioBtn.on('pointerdown', () => {
@@ -84,19 +93,20 @@ export default class GameScene extends Phaser.Scene {
             audioBtn.setVisible(false);
         });
         
-        // UI Components
-        this.newsFeed = new NewsFeed(this, width / 2, height / 2);
-        this.advisorPanel = new AdvisorPanel(this, width / 2, height - 180);
+        // UI Components - REORGANIZED TO AVOID OVERLAP
+        this.newsFeed = new NewsFeed(this, width / 2, 300); // Moved up
+        this.advisorPanel = new AdvisorPanel(this, width / 2, 500); // Moved up
         this.slider = new InterestRateSlider(this, width / 2, height - 50, (value) => {
             this.economicModel.setInterestRate(value);
             this.audioManager.playSliderMove();
         });
         this.slider.setValue(this.economicModel.interestRate);
         
-        // Dashboard and controls
-        this.createDashboard(width - 220, 150);
-        this.createForexControls(width - 200, height - 280);
-        this.createObjectivePanel(150, 150);
+        // Dashboard and controls - REPOSITIONED
+        this.createDashboard(width - 200, 180); // Right side, lower
+        this.createMacroIndicators(150, 180); // Left side, new panel
+        this.createForexControls(width - 200, height - 200); // Right side, bottom
+        this.createObjectivePanel(150, 480); // Left side, bottom
         
         // Keyboard controls
         this.setupKeyboardControls();
@@ -108,97 +118,159 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
     
+    
+    createMacroIndicators(x, y) {
+        const panel = this.add.graphics();
+        panel.fillStyle(0x0a0e1a, 0.95);
+        panel.lineStyle(3, 0xff00ff, 1);
+        panel.fillRoundedRect(x - 140, y - 50, 280, 280, 10);
+        panel.strokeRoundedRect(x - 140, y - 50, 280, 280, 10);
+        
+        this.add.text(x, y - 20, '📊 INDICADORES MACRO', {
+            font: 'bold 14px Courier New',
+            fill: '#ff00ff',
+            stroke: '#000000',
+            strokeThickness: 3
+        }).setOrigin(0.5);
+        
+        // Inflation SAE (Core inflation)
+        this.add.text(x - 120, y + 10, '📌 INFLACIÓN SAE:', {
+            font: 'bold 11px Courier New',
+            fill: '#ffd700'
+        });
+        this.inflationSAEText = this.add.text(x + 80, y + 10, '3.5%', {
+            font: 'bold 13px Courier New',
+            fill: '#00ff00'
+        });
+        
+        // Output Gap (Brecha de producto)
+        this.add.text(x - 120, y + 35, '📈 BRECHA PRODUCTO:', {
+            font: 'bold 11px Courier New',
+            fill: '#ffd700'
+        });
+        this.outputGapText = this.add.text(x + 80, y + 35, '-2.5pp', {
+            font: 'bold 13px Courier New',
+            fill: '#ff0000'
+        });
+        
+        // FED Rate
+        this.add.text(x - 120, y + 60, '🇺🇸 TASA FED:', {
+            font: 'bold 11px Courier New',
+            fill: '#ffd700'
+        });
+        this.fedRateText = this.add.text(x + 80, y + 60, '4.50%', {
+            font: 'bold 13px Courier New',
+            fill: '#00ffff'
+        });
+        
+        // Expectations
+        this.add.text(x - 120, y + 85, '🔮 EXPECTATIVAS:', {
+            font: 'bold 11px Courier New',
+            fill: '#ffd700'
+        });
+        this.expectationsText = this.add.text(x + 80, y + 85, '3.5%', {
+            font: 'bold 13px Courier New',
+            fill: '#ffff00'
+        });
+        
+        // Potential GDP
+        this.add.text(x - 120, y + 110, '⚡ PBI POTENCIAL:', {
+            font: 'bold 11px Courier New',
+            fill: '#ffd700'
+        });
+        this.potentialGDPText = this.add.text(x + 80, y + 110, '3.0%', {
+            font: 'bold 13px Courier New',
+            fill: '#888888'
+        });
+        
+        // Separator
+        const separator = this.add.graphics();
+        separator.lineStyle(2, 0xff00ff, 0.5);
+        separator.lineBetween(x - 120, y + 130, x + 120, y + 130);
+        
+        // Info text
+        this.add.text(x, y + 150, 'CONTEXTO ECONÓMICO', {
+            font: 'bold 11px Courier New',
+            fill: '#888888'
+        }).setOrigin(0.5);
+        
+        this.add.text(x, y + 170, 'SAE = Sin Alimentos y Energía', {
+            font: '9px Courier New',
+            fill: '#666666'
+        }).setOrigin(0.5);
+        
+        this.add.text(x, y + 185, 'Brecha = PBI real - PBI potencial', {
+            font: '9px Courier New',
+            fill: '#666666'
+        }).setOrigin(0.5);
+        
+        this.add.text(x, y + 200, 'FED = Tasa de referencia EE.UU.', {
+            font: '9px Courier New',
+            fill: '#666666'
+        }).setOrigin(0.5);
+    }
+    
     createObjectivePanel(x, y) {
         const panel = this.add.graphics();
         panel.fillStyle(0x0a0e1a, 0.95);
         panel.lineStyle(3, 0xffd700, 1);
-        panel.fillRoundedRect(x - 140, y - 50, 280, 340, 10);
-        panel.strokeRoundedRect(x - 140, y - 50, 280, 340, 10);
+        panel.fillRoundedRect(x - 140, y - 50, 280, 220, 10);
+        panel.strokeRoundedRect(x - 140, y - 50, 280, 220, 10);
         
         this.add.text(x, y - 20, '🎯 OBJETIVO', {
-            font: 'bold 18px Courier New',
+            font: 'bold 16px Courier New',
             fill: '#ffd700',
             stroke: '#000000',
             strokeThickness: 3
         }).setOrigin(0.5);
         
-        this.add.text(x, y + 10, 'Mantén la economía estable', {
-            font: '12px Courier New',
+        // Time limit
+        this.timeText = this.add.text(x, y + 5, `⏰ Tiempo: 0/${this.maxMonths} meses`, {
+            font: 'bold 12px Courier New',
             fill: '#ffffff'
         }).setOrigin(0.5);
         
+        this.add.text(x, y + 25, 'Mantén la economía estable', {
+            font: '11px Courier New',
+            fill: '#888888'
+        }).setOrigin(0.5);
+        
         // Goals with checkmarks that update
-        this.goalInflation = this.add.text(x - 120, y + 40, '✗ Inflación: 1% - 3%', {
-            font: '11px Courier New',
+        this.goalInflation = this.add.text(x - 120, y + 50, '✗ Inflación: 1% - 3%', {
+            font: '10px Courier New',
             fill: '#ff0000'
         });
         
-        this.goalExchange = this.add.text(x - 120, y + 60, '✗ Tipo cambio: S/ 3.60 - 3.90', {
-            font: '11px Courier New',
+        this.goalExchange = this.add.text(x - 120, y + 68, '✗ Tipo cambio: S/ 3.60 - 3.90', {
+            font: '10px Courier New',
             fill: '#ff0000'
         });
         
-        this.goalReserves = this.add.text(x - 120, y + 80, '✗ Reservas: > $60B', {
-            font: '11px Courier New',
+        this.goalReserves = this.add.text(x - 120, y + 86, '✗ Reservas: > $60B', {
+            font: '10px Courier New',
             fill: '#ff0000'
         });
         
-        this.goalCredibility = this.add.text(x - 120, y + 100, '✗ Credibilidad: > 80%', {
-            font: '11px Courier New',
+        this.goalCredibility = this.add.text(x - 120, y + 104, '✗ Credibilidad: > 80%', {
+            font: '10px Courier New',
             fill: '#ff0000'
         });
         
-        this.goalGDP = this.add.text(x - 120, y + 120, '✗ PBI: Crecimiento positivo', {
-            font: '11px Courier New',
+        this.goalGDP = this.add.text(x - 120, y + 122, '✗ PBI: Crecimiento positivo', {
+            font: '10px Courier New',
             fill: '#ff0000'
         });
         
         // Score
-        this.add.text(x, y + 145, 'PUNTUACIÓN', {
-            font: 'bold 14px Courier New',
-            fill: '#ffd700',
-            stroke: '#000000',
-            strokeThickness: 2
-        }).setOrigin(0.5);
-        
-        this.scoreText = this.add.text(x, y + 170, '0 pts', {
-            font: 'bold 24px Courier New',
+        this.scoreText = this.add.text(x, y + 150, '0 pts', {
+            font: 'bold 20px Courier New',
             fill: '#00ffff'
         }).setOrigin(0.5);
         
-        // High score
-        this.add.text(x, y + 200, 'RÉCORD', {
-            font: 'bold 12px Courier New',
-            fill: '#888888'
-        }).setOrigin(0.5);
-        
-        this.highScoreText = this.add.text(x, y + 220, `${this.highScore} pts`, {
-            font: 'bold 16px Courier New',
+        // High score (smaller)
+        this.highScoreText = this.add.text(x + 100, y + 150, `Récord: ${this.highScore}`, {
+            font: '10px Courier New',
             fill: '#ffd700'
-        }).setOrigin(0.5);
-        
-        // Win condition
-        this.add.text(x, y + 250, `META: ${this.winScore} puntos`, {
-            font: 'bold 12px Courier New',
-            fill: '#ffffff'
-        }).setOrigin(0.5);
-        
-        this.add.text(x, y + 270, '(+10 pts si TODO está bien)', {
-            font: '10px Courier New',
-            fill: '#00ff00'
-        }).setOrigin(0.5);
-        
-        this.add.text(x, y + 285, '(-10 pts en crisis)', {
-            font: '10px Courier New',
-            fill: '#ff0000'
-        }).setOrigin(0.5);
-        
-        // Level indicator
-        this.levelText = this.add.text(x, y - 40, `NIVEL ${this.currentLevel}`, {
-            font: 'bold 14px Courier New',
-            fill: '#ff00ff',
-            stroke: '#000000',
-            strokeThickness: 2
         }).setOrigin(0.5);
     }
     
@@ -330,73 +402,65 @@ export default class GameScene extends Phaser.Scene {
         const panel = this.add.graphics();
         panel.fillStyle(0x0a0e1a, 0.95);
         panel.lineStyle(3, 0x00ffff, 1);
-        panel.fillRoundedRect(x - 180, y - 50, 360, 350, 10);
-        panel.strokeRoundedRect(x - 180, y - 50, 360, 350, 10);
+        panel.fillRoundedRect(x - 180, y - 50, 360, 280, 10);
+        panel.strokeRoundedRect(x - 180, y - 50, 360, 280, 10);
         
         this.add.text(x, y - 20, 'PANEL DE CONTROL BCRP', {
-            font: 'bold 16px Courier New',
+            font: 'bold 14px Courier New',
             fill: '#00ffff',
             stroke: '#000000',
             strokeThickness: 3
         }).setOrigin(0.5);
         
         // Month
-        this.monthText = this.add.text(x, y + 10, 'Mes: 0', {
-            font: '14px Courier New',
+        this.monthText = this.add.text(x, y + 5, 'Mes: 0', {
+            font: '12px Courier New',
             fill: '#ffffff'
         }).setOrigin(0.5);
         
         // Exchange Rate (TIPO DE CAMBIO)
-        this.add.text(x - 150, y + 45, '💱 TIPO DE CAMBIO:', {
-            font: 'bold 14px Courier New',
-            fill: '#ffd700',
-            stroke: '#000000',
-            strokeThickness: 2
+        this.add.text(x - 150, y + 35, '💱 TIPO DE CAMBIO:', {
+            font: 'bold 12px Courier New',
+            fill: '#ffd700'
         });
-        this.exchangeRateText = this.add.text(x + 80, y + 45, 'S/ 3.75', {
-            font: 'bold 16px Courier New',
+        this.exchangeRateText = this.add.text(x + 80, y + 35, 'S/ 3.75', {
+            font: 'bold 14px Courier New',
             fill: '#00ff00'
         });
         
         // Reserves (RESERVAS)
-        this.add.text(x - 150, y + 75, '💰 RESERVAS (RIN):', {
-            font: 'bold 14px Courier New',
-            fill: '#ffd700',
-            stroke: '#000000',
-            strokeThickness: 2
+        this.add.text(x - 150, y + 60, '💰 RESERVAS (RIN):', {
+            font: 'bold 12px Courier New',
+            fill: '#ffd700'
         });
-        this.reservesText = this.add.text(x + 80, y + 75, '$74,200M', {
-            font: 'bold 16px Courier New',
+        this.reservesText = this.add.text(x + 80, y + 60, '$74,200M', {
+            font: 'bold 14px Courier New',
             fill: '#00ff00'
         });
         
         // GDP Growth
-        this.add.text(x - 150, y + 105, '📈 CRECIMIENTO PBI:', {
-            font: 'bold 14px Courier New',
-            fill: '#ffd700',
-            stroke: '#000000',
-            strokeThickness: 2
+        this.add.text(x - 150, y + 85, '📈 CRECIMIENTO PBI:', {
+            font: 'bold 12px Courier New',
+            fill: '#ffd700'
         });
-        this.gdpText = this.add.text(x + 80, y + 105, '2.1%', {
-            font: 'bold 16px Courier New',
+        this.gdpText = this.add.text(x + 80, y + 85, '2.1%', {
+            font: 'bold 14px Courier New',
             fill: '#00ff00'
         });
         
         // Credibility
-        this.add.text(x - 150, y + 135, '⭐ CREDIBILIDAD:', {
-            font: 'bold 14px Courier New',
-            fill: '#ffd700',
-            stroke: '#000000',
-            strokeThickness: 2
+        this.add.text(x - 150, y + 110, '⭐ CREDIBILIDAD:', {
+            font: 'bold 12px Courier New',
+            fill: '#ffd700'
         });
-        this.credibilityText = this.add.text(x + 80, y + 135, '100%', {
-            font: 'bold 16px Courier New',
+        this.credibilityText = this.add.text(x + 80, y + 110, '100%', {
+            font: 'bold 14px Courier New',
             fill: '#00ff00'
         });
         
         // Economic Health Bar
-        this.add.text(x, y + 175, 'SALUD ECONÓMICA', {
-            font: 'bold 14px Courier New',
+        this.add.text(x, y + 145, 'SALUD ECONÓMICA', {
+            font: 'bold 12px Courier New',
             fill: '#ffd700',
             stroke: '#000000',
             strokeThickness: 2
@@ -404,19 +468,17 @@ export default class GameScene extends Phaser.Scene {
         
         this.healthBarBg = this.add.graphics();
         this.healthBarBg.fillStyle(0x333333, 1);
-        this.healthBarBg.fillRect(x - 150, y + 195, 300, 20);
+        this.healthBarBg.fillRect(x - 150, y + 165, 300, 18);
         
         this.healthBar = this.add.graphics();
         
         // Status
-        this.statusText = this.add.text(x, y + 235, 'ESTABLE ✓', {
-            font: 'bold 18px Courier New',
+        this.statusText = this.add.text(x, y + 200, 'ESTABLE ✓', {
+            font: 'bold 16px Courier New',
             fill: '#00ff00',
             stroke: '#000000',
             strokeThickness: 3
         }).setOrigin(0.5);
-        
-        // Objective removed from here - will be in separate panel
     }
     
     createForexControls(x, y) {
@@ -544,6 +606,33 @@ export default class GameScene extends Phaser.Scene {
             this.newsFeed.update(state.news, state.inflation, state.inTarget);
             this.advisorPanel.update(state);
             this.monthText.setText(`Mes: ${state.month}`);
+            
+            // Update time limit
+            this.timeText.setText(`⏰ Tiempo: ${state.month}/${this.maxMonths} meses`);
+            if (state.month >= this.maxMonths) {
+                // Time's up! Check if won
+                if (this.score >= this.winScore) {
+                    this.showVictory();
+                } else {
+                    this.showGameOver('Se acabó el tiempo');
+                }
+                return;
+            }
+            
+            // Update macro indicators
+            this.inflationSAEText.setText(`${state.inflationSAE.toFixed(1)}%`);
+            this.inflationSAEText.setColor(state.inflationSAE >= 1 && state.inflationSAE <= 3 ? '#00ff00' : '#ffff00');
+            
+            const gapColor = Math.abs(state.outputGap) < 1 ? '#00ff00' : Math.abs(state.outputGap) < 2 ? '#ffff00' : '#ff0000';
+            this.outputGapText.setText(`${state.outputGap > 0 ? '+' : ''}${state.outputGap.toFixed(1)}pp`);
+            this.outputGapText.setColor(gapColor);
+            
+            this.fedRateText.setText(`${state.fedRate.toFixed(2)}%`);
+            
+            this.expectationsText.setText(`${state.expectations.toFixed(1)}%`);
+            this.expectationsText.setColor(state.expectations >= 1 && state.expectations <= 3 ? '#00ff00' : '#ffff00');
+            
+            this.potentialGDPText.setText(`${state.potentialGDP.toFixed(1)}%`);
             
             // Exchange rate with color coding
             const exColor = state.exchangeRateStable ? '#00ff00' : '#ff00ff';
@@ -766,4 +855,78 @@ export default class GameScene extends Phaser.Scene {
         
         this.audioManager.playSuccess();
     }
+    
+    showGameOver(reason) {
+        // Save progress
+        this.saveManager.incrementGamesPlayed();
+        
+        // Pause game
+        this.scene.pause();
+        
+        // Game over overlay
+        const overlay = this.add.graphics();
+        overlay.fillStyle(0x000000, 0.9);
+        overlay.fillRect(0, 0, 1280, 720);
+        overlay.setDepth(1000);
+        
+        const gameOverText = this.add.text(640, 250, '⏰ TIEMPO AGOTADO', {
+            font: 'bold 48px Courier New',
+            fill: '#ff0000',
+            stroke: '#000000',
+            strokeThickness: 6
+        }).setOrigin(0.5);
+        gameOverText.setDepth(1001);
+        
+        const subText = this.add.text(640, 320, `${reason}\nPuntuación final: ${this.score} / ${this.winScore} puntos\nNivel: ${this.currentLevel}`, {
+            font: 'bold 20px Courier New',
+            fill: '#ffffff',
+            align: 'center',
+            lineSpacing: 10
+        }).setOrigin(0.5);
+        subText.setDepth(1001);
+        
+        const retryBtn = this.add.text(640, 420, '🔄 INTENTAR DE NUEVO', {
+            font: 'bold 18px Courier New',
+            fill: '#ffff00',
+            backgroundColor: '#333300',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5);
+        retryBtn.setDepth(1001);
+        retryBtn.setInteractive({ useHandCursor: true });
+        retryBtn.on('pointerdown', () => {
+            this.score = 0;
+            this.economicModel.reset();
+            this.economicModel.setLevel(this.currentLevel);
+            overlay.destroy();
+            gameOverText.destroy();
+            subText.destroy();
+            retryBtn.destroy();
+            restartBtn.destroy();
+            this.scene.resume();
+        });
+        
+        const restartBtn = this.add.text(640, 480, '🏠 VOLVER A NIVEL 1', {
+            font: 'bold 16px Courier New',
+            fill: '#888888',
+            backgroundColor: '#222222',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5);
+        restartBtn.setDepth(1001);
+        restartBtn.setInteractive({ useHandCursor: true });
+        restartBtn.on('pointerdown', () => {
+            this.currentLevel = 1;
+            this.score = 0;
+            this.economicModel.reset();
+            this.economicModel.setLevel(1);
+            overlay.destroy();
+            gameOverText.destroy();
+            subText.destroy();
+            retryBtn.destroy();
+            restartBtn.destroy();
+            this.scene.resume();
+        });
+        
+        this.audioManager.playAlert();
+    }
+
 }

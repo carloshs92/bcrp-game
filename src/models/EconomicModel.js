@@ -7,13 +7,17 @@ export default class EconomicModel {
     constructor() {
         // State variables - START WITH CHALLENGING CONDITIONS
         this.inflation = 3.8; // Start near upper limit (challenging)
+        this.inflationSAE = 3.5; // Core inflation (Sin Alimentos y Energía)
         this.interestRate = 6.75; // Current interest rate (%)
         this.exchangeRate = 3.95; // Start near upper limit (challenging)
         this.reserves = 62000; // Start just above minimum (challenging)
         this.gdpGrowth = 0.5; // Low growth (challenging)
+        this.potentialGDP = 3.0; // Potential GDP growth rate
+        this.outputGap = -2.5; // Brecha de producto (actual - potential)
         this.demand = 95; // Below normal (challenging)
         this.expectations = 3.5; // High expectations (challenging)
         this.credibility = 85; // Just above minimum (challenging)
+        this.fedRate = 4.5; // US Federal Reserve rate
         
         // Target ranges
         this.targetInflationMin = 1.0;
@@ -47,6 +51,10 @@ export default class EconomicModel {
         
         // Level system
         this.level = 1;
+        
+        // Quarterly report system
+        this.lastReportMonth = 0;
+        this.reportQueue = [];
     }
     
     /**
@@ -93,6 +101,11 @@ export default class EconomicModel {
         const targetInflation = this.naturalInflation + rateEffect + exchangeRateEffect + demandEffect;
         this.inflation = this.inertia * this.inflation + (1 - this.inertia) * targetInflation;
         
+        // Core inflation (SAE - Sin Alimentos y Energía)
+        // More stable, less affected by temporary shocks
+        const coreTargetInflation = this.naturalInflation + rateEffect + demandEffect * 0.5;
+        this.inflationSAE = 0.95 * this.inflationSAE + 0.05 * coreTargetInflation;
+        
         // Expectations follow actual inflation
         this.expectations = 0.7 * this.expectations + 0.3 * this.inflation;
         
@@ -104,6 +117,9 @@ export default class EconomicModel {
         const exchangeImpactOnGDP = 0.03 * (this.exchangeRate - 3.75); // Depreciation helps exports (reduced)
         this.gdpGrowth = 1.5 + rateImpactOnGDP + exchangeImpactOnGDP + (Math.random() - 0.6) * 0.4; // Biased downward
         this.gdpGrowth = Math.max(-3, Math.min(6, this.gdpGrowth));
+        
+        // Output gap (Brecha de producto)
+        this.outputGap = this.gdpGrowth - this.potentialGDP;
         
         // Demand affected by GDP growth
         this.demand = 100 + this.gdpGrowth * 2 + (Math.random() - 0.5) * 5;
@@ -140,6 +156,21 @@ export default class EconomicModel {
             this.credibility = Math.max(0, this.credibility - 1);
         }
         
+        // FED rate changes (random events)
+        if (Math.random() < 0.02) { // 2% chance per month
+            const change = (Math.random() - 0.5) * 0.5;
+            this.fedRate = Math.max(0, Math.min(8, this.fedRate + change));
+            if (Math.abs(change) > 0.2) {
+                this.addNews(`🇺🇸 FED ${change > 0 ? 'sube' : 'baja'} tasa a ${this.fedRate.toFixed(2)}%`, 'fed');
+            }
+        }
+        
+        // Generate quarterly report
+        if (currentMonth > prevMonth && currentMonth % 3 === 0 && currentMonth !== this.lastReportMonth) {
+            this.generateQuarterlyReport();
+            this.lastReportMonth = currentMonth;
+        }
+        
         // Add small random noise for realism
         this.inflation += (Math.random() - 0.5) * 0.1;
         
@@ -154,8 +185,7 @@ export default class EconomicModel {
     
     updateExchangeRate() {
         // Exchange rate affected by interest rate differential (Carry trade)
-        const usRate = 4.5; // Assume US rate
-        const rateDifferential = this.interestRate - usRate;
+        const rateDifferential = this.interestRate - this.fedRate; // Use FED rate
         const rateEffect = -rateDifferential * 0.015; // Higher domestic rate appreciates currency (BAJA tipo de cambio)
         
         // Random shocks (capital flows, commodity prices, risk aversion)
@@ -369,6 +399,52 @@ export default class EconomicModel {
     }
     
     /**
+     * Generate quarterly inflation report (transparency requirement)
+     */
+    generateQuarterlyReport() {
+        const quarter = Math.floor(this.monthCounter / 3);
+        
+        let report = `📊 REPORTE DE INFLACIÓN - T${quarter}\n\n`;
+        
+        // Inflation assessment
+        if (this.isInflationInTarget()) {
+            report += `✅ Inflación en meta (${this.inflation.toFixed(1)}%)\n`;
+        } else if (this.inflation > this.targetInflationMax) {
+            report += `⚠️ Inflación sobre meta (${this.inflation.toFixed(1)}%)\n`;
+        } else {
+            report += `⚠️ Inflación bajo meta (${this.inflation.toFixed(1)}%)\n`;
+        }
+        
+        // Core inflation
+        report += `📌 Inflación subyacente: ${this.inflationSAE.toFixed(1)}%\n`;
+        
+        // Output gap
+        if (this.outputGap > 0) {
+            report += `📈 Economía sobre potencial (+${this.outputGap.toFixed(1)}pp)\n`;
+        } else {
+            report += `📉 Economía bajo potencial (${this.outputGap.toFixed(1)}pp)\n`;
+        }
+        
+        // Policy stance
+        if (this.interestRate > 7) {
+            report += `🔴 Política monetaria restrictiva\n`;
+        } else if (this.interestRate < 6) {
+            report += `🟢 Política monetaria expansiva\n`;
+        } else {
+            report += `🟡 Política monetaria neutral\n`;
+        }
+        
+        // Forward guidance
+        if (this.expectations > this.targetInflationMax) {
+            report += `⚡ Expectativas desancladas - Acción requerida`;
+        } else {
+            report += `✓ Expectativas ancladas`;
+        }
+        
+        this.addNews(report, 'report');
+    }
+    
+    /**
      * Set intervention amount
      */
     setInterventionAmount(amount) {
@@ -428,13 +504,17 @@ export default class EconomicModel {
     getState() {
         return {
             inflation: this.inflation,
+            inflationSAE: this.inflationSAE,
             interestRate: this.interestRate,
             exchangeRate: this.exchangeRate,
             reserves: this.reserves,
             gdpGrowth: this.gdpGrowth,
+            potentialGDP: this.potentialGDP,
+            outputGap: this.outputGap,
             demand: this.demand,
             expectations: this.expectations,
             credibility: this.credibility,
+            fedRate: this.fedRate,
             inTarget: this.isInflationInTarget(),
             exchangeRateStable: this.isExchangeRateStable(),
             economicHealth: this.getEconomicHealth(),
@@ -460,18 +540,24 @@ export default class EconomicModel {
      */
     reset() {
         this.inflation = 3.8; // Challenging start
+        this.inflationSAE = 3.5;
         this.interestRate = 6.75;
         this.exchangeRate = 3.95; // Challenging start
         this.reserves = 62000; // Challenging start
         this.gdpGrowth = 0.5; // Challenging start
+        this.potentialGDP = 3.0;
+        this.outputGap = -2.5;
         this.demand = 95; // Challenging start
         this.expectations = 3.5; // Challenging start
         this.credibility = 85; // Challenging start
+        this.fedRate = 4.5;
         this.rateHistory = [];
         this.monthCounter = 0;
         this.lastIntervention = null;
         this.interventionCooldown = 0;
         this.newsQueue = [];
         this.nextEventTime = Math.random() * 10 + 5;
+        this.lastReportMonth = 0;
+        this.reportQueue = [];
     }
 }
