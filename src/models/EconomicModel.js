@@ -5,25 +5,25 @@
  */
 export default class EconomicModel {
     constructor() {
-        // State variables - START WITH CHALLENGING CONDITIONS
-        this.inflation = 3.8; // Start near upper limit (challenging)
-        this.inflationSAE = 3.5; // Core inflation (Sin Alimentos y Energía)
-        this.interestRate = 6.75; // Current interest rate (%)
-        this.exchangeRate = 3.95; // Start near upper limit (challenging)
-        this.reserves = 62000; // Start just above minimum (challenging)
-        this.gdpGrowth = 0.5; // Low growth (challenging)
+        // State variables - START WITH REALISTIC CONDITIONS
+        this.inflation = 2.8; // Start in middle of target (more realistic)
+        this.inflationSAE = 2.5; // Core inflation (Sin Alimentos y Energía)
+        this.interestRate = 6.25; // Neutral rate
+        this.exchangeRate = 3.75; // Middle of realistic range
+        this.reserves = 68000; // Comfortable level
+        this.gdpGrowth = 2.5; // Moderate growth
         this.potentialGDP = 3.0; // Potential GDP growth rate
-        this.outputGap = -2.5; // Brecha de producto (actual - potential)
-        this.demand = 95; // Below normal (challenging)
-        this.expectations = 3.5; // High expectations (challenging)
-        this.credibility = 85; // Just above minimum (challenging)
+        this.outputGap = -0.5; // Small negative gap
+        this.demand = 100; // Normal
+        this.expectations = 2.5; // Anchored
+        this.credibility = 90; // Good credibility
         this.fedRate = 4.5; // US Federal Reserve rate
         
         // Target ranges
         this.targetInflationMin = 1.0;
         this.targetInflationMax = 3.0;
-        this.targetExchangeRateMin = 3.60;
-        this.targetExchangeRateMax = 3.90;
+        this.targetExchangeRateMin = 3.40; // More realistic range (was 3.60)
+        this.targetExchangeRateMax = 3.90; // Keep upper bound
         
         // Model parameters (tunable)
         this.sensitivity = 0.20; // Increased - interest rate affects inflation more
@@ -192,21 +192,25 @@ export default class EconomicModel {
     updateExchangeRate() {
         // Exchange rate affected by interest rate differential (Carry trade)
         const rateDifferential = this.interestRate - this.fedRate; // Use FED rate
-        const rateEffect = -rateDifferential * 0.015; // Higher domestic rate appreciates currency (BAJA tipo de cambio)
+        const rateEffect = -rateDifferential * 0.02; // Increased sensitivity (was 0.015)
         
         // Random shocks (capital flows, commodity prices, risk aversion)
-        // BIASED TOWARD DEPRECIATION (tipo de cambio sube)
-        const shock = Math.random() * this.exchangeRateVolatility; // Always positive = depreciation
+        // MORE BALANCED - can go up or down
+        const shock = (Math.random() - 0.4) * this.exchangeRateVolatility; // Slight bias toward depreciation (0.4 instead of 0.5)
         
         // Inflation differential effect (PPP - Purchasing Power Parity)
         // Higher inflation = depreciation (tipo de cambio sube)
-        const inflationEffect = Math.max(0, (this.inflation - 2.0) * 0.02); // Only positive effect
+        const inflationEffect = (this.inflation - 2.0) * 0.015; // Can be negative if inflation is low
+        
+        // Commodity prices effect (copper, gold, etc.)
+        // Simulated: when GDP is strong, commodities are likely high → sol appreciates
+        const commodityEffect = (this.gdpGrowth - 2.0) * 0.01; // Negative = appreciation
         
         // Apply all effects
-        this.exchangeRate += rateEffect + shock + inflationEffect;
+        this.exchangeRate += rateEffect + shock + inflationEffect + commodityEffect;
         
-        // Bounds checking (realistic range for PEN/USD)
-        this.exchangeRate = Math.max(3.0, Math.min(5.0, this.exchangeRate));
+        // MORE REALISTIC BOUNDS - can go lower
+        this.exchangeRate = Math.max(2.5, Math.min(5.0, this.exchangeRate)); // Was 3.0 min, now 2.5
         
         // Reset intervention flag (effect was already applied in interveneForex)
         this.lastIntervention = null;
@@ -543,17 +547,17 @@ export default class EconomicModel {
      * Reset the model to initial state
      */
     reset() {
-        this.inflation = 3.8; // Challenging start
-        this.inflationSAE = 3.5;
-        this.interestRate = 6.75;
-        this.exchangeRate = 3.95; // Challenging start
-        this.reserves = 62000; // Challenging start
-        this.gdpGrowth = 0.5; // Challenging start
+        this.inflation = 2.8; // Realistic start
+        this.inflationSAE = 2.5;
+        this.interestRate = 6.25;
+        this.exchangeRate = 3.75; // Realistic start
+        this.reserves = 68000; // Comfortable start
+        this.gdpGrowth = 2.5; // Moderate start
         this.potentialGDP = 3.0;
-        this.outputGap = -2.5;
-        this.demand = 95; // Challenging start
-        this.expectations = 3.5; // Challenging start
-        this.credibility = 85; // Challenging start
+        this.outputGap = -0.5;
+        this.demand = 100; // Normal start
+        this.expectations = 2.5; // Anchored start
+        this.credibility = 90; // Good start
         this.fedRate = 4.5;
         this.rateHistory = [];
         this.weekCounter = 0; // Changed to weeks

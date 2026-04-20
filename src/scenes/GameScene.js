@@ -763,7 +763,7 @@ export default class GameScene extends Phaser.Scene {
             this.goalInflation.setText(inflationOK ? '✓ Inflación: 1% - 3%' : '✗ Inflación: 1% - 3%');
             this.goalInflation.setColor(inflationOK ? '#00ff00' : '#ff0000');
             
-            this.goalExchange.setText(exchangeRateOK ? '✓ Tipo cambio: S/ 3.60 - 3.90' : '✗ Tipo cambio: S/ 3.60 - 3.90');
+            this.goalExchange.setText(exchangeRateOK ? '✓ Tipo cambio: S/ 3.40 - 3.90' : '✗ Tipo cambio: S/ 3.40 - 3.90');
             this.goalExchange.setColor(exchangeRateOK ? '#00ff00' : '#ff0000');
             
             this.goalReserves.setText(reservesOK ? '✓ Reservas: > $60B' : '✗ Reservas: > $60B');
