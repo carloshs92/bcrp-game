@@ -36,8 +36,8 @@ export default class EconomicModel {
         
         // Internal state for lag implementation
         this.rateHistory = [];
-        this.monthCounter = 0;
-        this.monthsPerUpdate = 1; // Game months per update call
+        this.weekCounter = 0; // Changed to weeks
+        this.weeksPerUpdate = 1; // Game weeks per update call
         
         // Player actions
         this.lastIntervention = null; // 'buy' or 'sell' dollars
@@ -53,17 +53,19 @@ export default class EconomicModel {
         this.level = 1;
         
         // Quarterly report system
-        this.lastReportMonth = 0;
+        this.lastReportWeek = 0; // Changed to weeks
         this.reportQueue = [];
     }
     
     /**
-     * Update the economic simulation by one time step
+     * Update the economic simulation by one time step (1 week)
      */
     update(deltaTime = 1) {
-        const prevMonth = Math.floor(this.monthCounter);
-        this.monthCounter += deltaTime;
-        const currentMonth = Math.floor(this.monthCounter);
+        const prevWeek = Math.floor(this.weekCounter);
+        this.weekCounter += deltaTime;
+        const currentWeek = Math.floor(this.weekCounter);
+        const currentMonth = Math.floor(currentWeek / 4); // 4 weeks = 1 month
+        const prevMonth = Math.floor(prevWeek / 4);
         
         // Store interest rate history for lag calculation
         this.rateHistory.push(this.interestRate);
@@ -71,14 +73,16 @@ export default class EconomicModel {
             this.rateHistory.shift();
         }
         
-        // Generate news when month changes
-        if (currentMonth > prevMonth && currentMonth % 3 === 0) {
+        // Generate news when month changes (every 4 weeks)
+        if (currentMonth > prevMonth) {
             this.generateEconomicNews();
         }
         
-        // Generate random events
-        if (this.monthCounter >= this.nextEventTime) {
-            this.generateRandomEvent();
+        // Generate random events (less frequent - every 4 weeks = monthly)
+        if (currentWeek > prevWeek && currentWeek % 4 === 0) {
+            if (this.weekCounter >= this.nextEventTime) {
+                this.generateRandomEvent();
+            }
         }
         
         // Calculate average lagged interest rate effect
@@ -97,9 +101,10 @@ export default class EconomicModel {
         // Demand affects inflation
         const demandEffect = (this.demand - 100) * 0.02;
         
-        // Inflation dynamics with inertia
+        // Inflation dynamics with inertia (weekly changes are smaller)
+        const weeklyAdjustment = 0.25; // Weekly changes are 1/4 of monthly
         const targetInflation = this.naturalInflation + rateEffect + exchangeRateEffect + demandEffect;
-        this.inflation = this.inertia * this.inflation + (1 - this.inertia) * targetInflation;
+        this.inflation = this.inertia * this.inflation + (1 - this.inertia) * targetInflation * weeklyAdjustment;
         
         // Core inflation (SAE - Sin Alimentos y Energía)
         // More stable, less affected by temporary shocks
@@ -126,38 +131,39 @@ export default class EconomicModel {
         
         // AGGRESSIVE natural economic drift - economy deteriorates without intervention
         // This makes the game impossible to win by doing nothing
-        if (Math.random() < 0.7) { // 70% chance each month (increased)
+        // Weekly drift is smaller than monthly
+        if (Math.random() < 0.20) { // 20% chance each week (was 70% per month)
             const driftType = Math.random();
             if (driftType < 0.25) {
-                // Demand shock (stronger)
-                this.demand += (Math.random() - 0.5) * 20;
+                // Demand shock (smaller weekly)
+                this.demand += (Math.random() - 0.5) * 5;
             } else if (driftType < 0.5) {
                 // Exchange rate DEPRECIATION pressure (sol se debilita = tipo de cambio SUBE)
-                this.exchangeRate += Math.random() * 0.15; // Always positive = depreciation
+                this.exchangeRate += Math.random() * 0.04; // Smaller weekly change
             } else if (driftType < 0.75) {
                 // Inflation pressure (always upward)
-                this.inflation += Math.random() * 0.4; // Always positive = inflation rises
+                this.inflation += Math.random() * 0.1; // Smaller weekly change
             } else {
                 // Credibility erosion
-                this.credibility -= Math.random() * 3;
+                this.credibility -= Math.random() * 0.75; // Smaller weekly change
             }
         }
         
-        // Reserves naturally deplete (capital flight, imports)
-        this.reserves -= Math.random() * 150; // Lose 0-150M per month
+        // Reserves naturally deplete (capital flight, imports) - weekly
+        this.reserves -= Math.random() * 40; // Lose 0-40M per week (was 0-150M per month)
         
-        // GDP naturally slows down without stimulus
-        this.gdpGrowth -= Math.random() * 0.1;
+        // GDP naturally slows down without stimulus - weekly
+        this.gdpGrowth -= Math.random() * 0.025; // Smaller weekly change
         
-        // Credibility affected by inflation control
+        // Credibility affected by inflation control (weekly adjustment)
         if (this.isInflationInTarget()) {
-            this.credibility = Math.min(100, this.credibility + 0.5);
+            this.credibility = Math.min(100, this.credibility + 0.125); // Weekly: 0.5/4
         } else {
-            this.credibility = Math.max(0, this.credibility - 1);
+            this.credibility = Math.max(0, this.credibility - 0.25); // Weekly: 1/4
         }
         
-        // FED rate changes (random events)
-        if (Math.random() < 0.02) { // 2% chance per month
+        // FED rate changes (random events) - less frequent
+        if (Math.random() < 0.005) { // 0.5% chance per week (was 2% per month)
             const change = (Math.random() - 0.5) * 0.5;
             this.fedRate = Math.max(0, Math.min(8, this.fedRate + change));
             if (Math.abs(change) > 0.2) {
@@ -165,10 +171,10 @@ export default class EconomicModel {
             }
         }
         
-        // Generate quarterly report
-        if (currentMonth > prevMonth && currentMonth % 3 === 0 && currentMonth !== this.lastReportMonth) {
+        // Generate quarterly report (every 12 weeks = 3 months)
+        if (currentWeek > prevWeek && currentWeek % 12 === 0 && currentWeek !== this.lastReportWeek) {
             this.generateQuarterlyReport();
-            this.lastReportMonth = currentMonth;
+            this.lastReportWeek = currentWeek;
         }
         
         // Add small random noise for realism
@@ -281,7 +287,7 @@ export default class EconomicModel {
         this.newsQueue.push({
             text: text,
             type: type,
-            time: this.monthCounter
+            time: Math.floor(this.weekCounter / 4) // Store as months for compatibility
         });
         
         // Keep only last 12 news items
@@ -299,49 +305,45 @@ export default class EconomicModel {
         // Interest rate changes generate news
         if (this.rateHistory.length >= 2 && Math.abs(this.interestRate - this.rateHistory[this.rateHistory.length - 2]) > 0.5) {
             if (this.interestRate > this.rateHistory[this.rateHistory.length - 2]) {
-                this.addNews(`📈 BCRP sube tasa a ${this.interestRate.toFixed(2)}% - Créditos más caros`, 'rate');
-                
-                // Secondary effects
-                setTimeout(() => {
-                    this.addNews(`🏠 Bancos suben tasas hipotecarias - Demanda de vivienda cae`, 'credit');
-                }, 100);
-                setTimeout(() => {
-                    this.addNews(`💰 Depósitos a plazo fijo más atractivos - Ahorro aumenta`, 'savings');
-                }, 200);
+                this.addNews(`🔴 BCRP sube tasa a ${this.interestRate.toFixed(2)}% - Créditos más caros`, 'rate');
             } else {
-                this.addNews(`📉 BCRP baja tasa a ${this.interestRate.toFixed(2)}% - Créditos más baratos`, 'rate');
-                
-                setTimeout(() => {
-                    this.addNews(`🚗 Créditos vehiculares más accesibles - Ventas de autos suben`, 'credit');
-                }, 100);
-                setTimeout(() => {
-                    this.addNews(`🏢 Empresas solicitan más créditos para inversión`, 'credit');
-                }, 200);
+                this.addNews(`🟢 BCRP baja tasa a ${this.interestRate.toFixed(2)}% - Créditos más baratos`, 'rate');
             }
         }
         
-        // Inflation news
-        if (state.inflation > 4) {
-            this.addNews(`⚠️ Inflación en ${state.inflation.toFixed(1)}% - Familias reducen consumo`, 'inflation');
+        // Inflation news - MORE RELEVANT
+        if (state.inflation > 5) {
+            this.addNews(`⚠️ INFLACIÓN ALTA: ${state.inflation.toFixed(1)}% - Familias pierden poder adquisitivo`, 'inflation');
         } else if (state.inflation < 1) {
-            this.addNews(`❄️ Inflación muy baja ${state.inflation.toFixed(1)}% - Riesgo deflacionario`, 'inflation');
+            this.addNews(`❄️ INFLACIÓN BAJA: ${state.inflation.toFixed(1)}% - Riesgo de deflación`, 'inflation');
+        } else if (state.inTarget) {
+            this.addNews(`✅ Inflación en meta: ${state.inflation.toFixed(1)}% - Economía estable`, 'inflation');
         }
         
-        // Exchange rate news
+        // Exchange rate news - MORE IMPACTFUL
         if (state.exchangeRate > 4.0) {
-            this.addNews(`💵 Dólar supera S/ 4.00 - Importaciones más caras`, 'exchange');
-            setTimeout(() => {
-                this.addNews(`📱 Precios de electrónicos importados suben 15%`, 'prices');
-            }, 100);
+            this.addNews(`💸 DÓLAR DISPARA: S/ ${state.exchangeRate.toFixed(2)} - Importaciones se encarecen`, 'exchange');
         } else if (state.exchangeRate < 3.5) {
-            this.addNews(`💰 Sol se fortalece - Exportadores preocupados`, 'exchange');
+            this.addNews(`💪 SOL FUERTE: S/ ${state.exchangeRate.toFixed(2)} - Exportadores preocupados`, 'exchange');
         }
         
-        // GDP news
-        if (state.gdpGrowth < 0) {
-            this.addNews(`📉 Economía en recesión - PBI cae ${Math.abs(state.gdpGrowth).toFixed(1)}%`, 'gdp');
+        // GDP news - MORE DRAMATIC
+        if (state.gdpGrowth < -1) {
+            this.addNews(`📉 RECESIÓN: PBI cae ${Math.abs(state.gdpGrowth).toFixed(1)}% - Desempleo aumenta`, 'gdp');
         } else if (state.gdpGrowth > 4) {
-            this.addNews(`🚀 Economía crece ${state.gdpGrowth.toFixed(1)}% - Inversión extranjera aumenta`, 'gdp');
+            this.addNews(`🚀 BOOM ECONÓMICO: PBI crece ${state.gdpGrowth.toFixed(1)}% - Inversión récord`, 'gdp');
+        }
+        
+        // Reserves news - CRITICAL ALERTS
+        if (state.reserves < 50000) {
+            this.addNews(`🚨 RESERVAS CRÍTICAS: $${(state.reserves/1000).toFixed(1)}B - Capacidad de intervención limitada`, 'reserves');
+        }
+        
+        // Credibility news - REPUTATION MATTERS
+        if (state.credibility < 60) {
+            this.addNews(`⭐ CREDIBILIDAD BAJA: ${Math.floor(state.credibility)}% - Mercados dudan del BCRP`, 'credibility');
+        } else if (state.credibility > 95) {
+            this.addNews(`⭐ CREDIBILIDAD ALTA: ${Math.floor(state.credibility)}% - Confianza total en BCRP`, 'credibility');
         }
     }
     
@@ -394,15 +396,15 @@ export default class EconomicModel {
         event.effect();
         
         // Schedule next event (more frequent in higher levels)
-        const baseInterval = 15 - (this.level * 2); // Much faster events
-        this.nextEventTime = this.monthCounter + Math.random() * baseInterval + 5;
+        const baseInterval = 60 - (this.level * 8); // Weeks between events
+        this.nextEventTime = this.weekCounter + Math.random() * baseInterval + 20;
     }
     
     /**
      * Generate quarterly inflation report (transparency requirement)
      */
     generateQuarterlyReport() {
-        const quarter = Math.floor(this.monthCounter / 3);
+        const quarter = Math.floor(this.weekCounter / 12); // 12 weeks = 1 quarter
         
         let report = `📊 REPORTE DE INFLACIÓN - T${quarter}\n\n`;
         
@@ -518,7 +520,9 @@ export default class EconomicModel {
             inTarget: this.isInflationInTarget(),
             exchangeRateStable: this.isExchangeRateStable(),
             economicHealth: this.getEconomicHealth(),
-            month: Math.floor(this.monthCounter),
+            week: Math.floor(this.weekCounter),
+            month: Math.floor(this.weekCounter / 4),
+            year: Math.floor(this.weekCounter / 52),
             canIntervene: this.interventionCooldown === 0,
             news: this.newsQueue,
             interventionAmount: this.interventionAmount,
@@ -552,12 +556,12 @@ export default class EconomicModel {
         this.credibility = 85; // Challenging start
         this.fedRate = 4.5;
         this.rateHistory = [];
-        this.monthCounter = 0;
+        this.weekCounter = 0; // Changed to weeks
         this.lastIntervention = null;
         this.interventionCooldown = 0;
         this.newsQueue = [];
-        this.nextEventTime = Math.random() * 10 + 5;
-        this.lastReportMonth = 0;
+        this.nextEventTime = Math.random() * 40 + 20; // Weeks
+        this.lastReportWeek = 0; // Changed to weeks
         this.reportQueue = [];
     }
 }

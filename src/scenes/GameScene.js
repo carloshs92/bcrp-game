@@ -21,7 +21,8 @@ export default class GameScene extends Phaser.Scene {
         this.interventionAmount = 200; // Default intervention amount
         this.score = 0; // Player score
         this.winScore = 1000; // Score needed to win
-        this.maxMonths = 12; // 1 year to win
+        this.maxWeeks = 260; // 5 years (52 weeks/year * 5 = 260 weeks)
+        this.currentWeek = 0; // Current week counter
         this.currentLevel = 1; // Current level
         this.highScore = 0; // High score from save
     }
@@ -225,8 +226,8 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
         
         // Time limit
-        this.timeText = this.add.text(x, y + 5, `⏰ Tiempo: 0/${this.maxMonths} meses`, {
-            font: 'bold 12px Courier New',
+        this.timeText = this.add.text(x, y + 5, `⏰ Semana: 0/${this.maxWeeks} (0 años)`, {
+            font: 'bold 11px Courier New',
             fill: '#ffffff'
         }).setOrigin(0.5);
         
@@ -237,27 +238,27 @@ export default class GameScene extends Phaser.Scene {
         
         // Goals with checkmarks that update
         this.goalInflation = this.add.text(x - 120, y + 50, '✗ Inflación: 1% - 3%', {
-            font: '10px Courier New',
+            font: '12px Courier New',
             fill: '#ff0000'
         });
         
         this.goalExchange = this.add.text(x - 120, y + 68, '✗ Tipo cambio: S/ 3.60 - 3.90', {
-            font: '10px Courier New',
+            font: '12px Courier New',
             fill: '#ff0000'
         });
         
         this.goalReserves = this.add.text(x - 120, y + 86, '✗ Reservas: > $60B', {
-            font: '10px Courier New',
+            font: '12px Courier New',
             fill: '#ff0000'
         });
         
         this.goalCredibility = this.add.text(x - 120, y + 104, '✗ Credibilidad: > 80%', {
-            font: '10px Courier New',
+            font: '12px Courier New',
             fill: '#ff0000'
         });
         
         this.goalGDP = this.add.text(x - 120, y + 122, '✗ PBI: Crecimiento positivo', {
-            font: '10px Courier New',
+            font: '12px Courier New',
             fill: '#ff0000'
         });
         
@@ -605,16 +606,19 @@ export default class GameScene extends Phaser.Scene {
             // Update UI
             this.newsFeed.update(state.news, state.inflation, state.inTarget);
             this.advisorPanel.update(state);
-            this.monthText.setText(`Mes: ${state.month}`);
+            this.monthText.setText(`Semana: ${state.week} (${state.year} años, ${state.month % 12} meses)`);
             
             // Update time limit
-            this.timeText.setText(`⏰ Tiempo: ${state.month}/${this.maxMonths} meses`);
-            if (state.month >= this.maxMonths) {
+            const yearsElapsed = (state.week / 52).toFixed(1);
+            this.timeText.setText(`⏰ Semana: ${state.week}/${this.maxWeeks} (${yearsElapsed} años)`);
+            this.currentWeek = state.week;
+            
+            if (state.week >= this.maxWeeks) {
                 // Time's up! Check if won
                 if (this.score >= this.winScore) {
                     this.showVictory();
                 } else {
-                    this.showGameOver('Se acabó el tiempo');
+                    this.showGameOver('Se acabó el tiempo - 5 años completados');
                 }
                 return;
             }
