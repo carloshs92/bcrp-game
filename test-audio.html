@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Audio</title>
+    <style>
+        body {
+            background: #0a0e1a;
+            color: white;
+            font-family: 'Courier New', monospace;
+            padding: 50px;
+        }
+        button {
+            font-size: 20px;
+            padding: 20px;
+            margin: 10px;
+            cursor: pointer;
+            background: #00ffff;
+            border: none;
+            border-radius: 5px;
+        }
+        #log {
+            margin-top: 20px;
+            padding: 20px;
+            background: #1a1e2a;
+            border: 2px solid #00ffff;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔊 Test de Audio</h1>
+    <button onclick="testAudio()">CLICK PARA PROBAR AUDIO</button>
+    <button onclick="testDrone()">PROBAR DRONE AMBIENT</button>
+    <div id="log"></div>
+
+    <script>
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${msg}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+
+        async function testAudio() {
+            log('🎵 Iniciando test de audio...');
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                log(`✅ AudioContext creado, estado: ${audioContext.state}`);
+                
+                if (audioContext.state === 'suspended') {
+                    log('⏸️ AudioContext suspendido, resumiendo...');
+                    await audioContext.resume();
+                    log(`✅ AudioContext resumido, estado: ${audioContext.state}`);
+                }
+                
+                // Crear un tono simple
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.frequency.value = 440; // A4
+                gain.gain.value = 0.3;
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                log('🎼 Reproduciendo tono A4 (440Hz) por 1 segundo...');
+                osc.start();
+                
+                setTimeout(() => {
+                    osc.stop();
+                    log('✅ Tono detenido');
+                    log('');
+                    log('¿Escuchaste el tono? Si sí, el audio funciona.');
+                    log('Si no, verifica el volumen de tu sistema.');
+                }, 1000);
+                
+            } catch (e) {
+                log(`❌ Error: ${e.message}`);
+            }
+        }
+
+        async function testDrone() {
+            log('🎵 Iniciando drone ambient...');
+            
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                log(`✅ AudioContext creado, estado: ${audioContext.state}`);
+                
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                    log(`✅ AudioContext resumido, estado: ${audioContext.state}`);
+                }
+                
+                // Crear gain principal
+                const mainGain = audioContext.createGain();
+                mainGain.gain.value = 0.3;
+                mainGain.connect(audioContext.destination);
+                
+                // Bass
+                const bass = audioContext.createOscillator();
+                bass.type = 'sine';
+                bass.frequency.value = 55;
+                const bassGain = audioContext.createGain();
+                bassGain.gain.value = 0.15;
+                bass.connect(bassGain);
+                bassGain.connect(mainGain);
+                
+                // Mid
+                const mid = audioContext.createOscillator();
+                mid.type = 'triangle';
+                mid.frequency.value = 110;
+                const midGain = audioContext.createGain();
+                midGain.gain.value = 0.1;
+                mid.connect(midGain);
+                midGain.connect(mainGain);
+                
+                // High
+                const high = audioContext.createOscillator();
+                high.type = 'sine';
+                high.frequency.value = 440;
+                const highGain = audioContext.createGain();
+                highGain.gain.value = 0.05;
+                high.connect(highGain);
+                highGain.connect(mainGain);
+                
+                bass.start();
+                mid.start();
+                high.start();
+                
+                log('🎼 Drone ambient reproduciendo...');
+                log('Deberías escuchar un sonido ambiente continuo.');
+                log('Presiona F5 para detener.');
+                
+            } catch (e) {
+                log(`❌ Error: ${e.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
