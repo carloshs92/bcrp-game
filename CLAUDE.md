@@ -1,0 +1,49 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project
+
+"Guardián de la Estabilidad" is an educational serious game about BCRP (Banco Central de Reserva del Perú) monetary policy. The player sits on the BCRP board and, in turn-based monthly meetings, sets the policy rate to keep inflation in the 1–3% target band without causing a recession. All player-facing text is in **Spanish**, so keep new strings in Spanish.
+
+The game is plain ES-module JavaScript with DOM, CSS, inline SVG and Web Audio (no framework, no game engine, no asset files), built with Vite. The visual style is institutional with Peruvian touches, such as the Andean textile band and local characters.
+
+## Commands
+
+- `npm run dev`: Vite dev server on port 3000
+- `npm run build`: production build to `dist/`
+- `npm test`: runs `node --test` over `test/`. To run a single test, use `node --test --test-name-pattern "nivel-1" test/`.
+
+Every push to `main` deploys to GitHub Pages through `.github/workflows/deploy.yml`. `vite.config.js` must keep `base: './'`.
+
+## Architecture
+
+The code is split into layers. Only `views/` and `audio/` touch the DOM or Web Audio.
+
+- `src/model/economy.js` holds a **pure** monthly macro model. `step(prev, newRate, shock, params)` implements the transmission chain the game teaches: policy rate → market rate (partial pass-through, which creates the lag) → real-rate gap vs. neutral → output gap → core inflation. It also adds expectations, anchored by credibility, and decaying supply shocks, and returns `drivers` so the UI can explain *why* inflation moved. `PARAMS` can be overridden per scenario, for example `potentialGrowth`, `credPenalty`, `bigMove`, or `gapToCore`.
+- `src/game/mandate.js` is the scenario-driven turn engine used by the tutorial, the history chapters and free mode. One turn is `stepsPerTurn` monthly steps. With `monthlyMeetings`, a move is spread across the quarter's three monthly meetings the way the real BCRP moves. The engine also handles:
+  - scripted or random events, plus **surprises** (`SURPRISES`) that are drawn *after* the decision, so the projection never includes them;
+  - political `pressure`, where `hikePressure` sets the cost per 25 bp hike;
+  - tools such as Reactiva Perú, and a hawk and a dove advisor (invariant: hawk ≥ dove);
+  - `projection()` for the live fan chart.
+  A seeded PRNG makes runs reproducible. For chapters that define a `realPath`, `evaluate()` scores the player against `Mandate.replayReal(seed)`, which replays the real BCRP rate path under the **same seed**, so copying the BCRP scores exactly 100.
+- `src/game/hyper.js` is a separate monthly engine for the 1990 chapter. There the instrument is money emission to finance the Treasury, not the policy rate.
+- `src/model/events.js` defines the Peruvian characters (fictional), the random event deck and the surprise deck. `src/model/history.js` defines the tutorial, the 5 chapters, and the interludes. The chapters are 1990 hyperinflation, the 2008 crisis, the 2017 coastal El Niño, the 2020 pandemic and 2021–23 inflation. Each chapter carries real BCRPData rate and inflation series and its sources. The facts in `context`, `reality` and the interludes are real and sourced; keep them that way.
+- `src/game/people.js` computes sector moods (−2 to +2) after every turn: low-income families, workers, mypes, debtors and savers (plus state workers in 1990). It also provides the "who wins / who loses" text for each move and the end-of-run human balance. Both engines store the moods in `peopleHistory`. The rule is that every decision has a visible human cost.
+- **Regional map.** `src/model/peruMap.js` holds generated SVG paths for the 24 departments; Lima includes Lima Metropolitana and Callao. It is built from Natural Earth admin-1 (public domain) by a one-off projection and simplification script, so don't hand-edit it. `src/model/regions.js` gives each department a qualitative economic profile (channel weights such as `alimentos`, `credito`, `mineria`, `nino`, `heladas`, `central`…), a fictional local character, and the local `product`/`mineral`. It also defines `TAG_EFFECTS`, which map event tags to channels, and `REGION_VOICES`, the phrase banks by cause with `{p}`/`{P}`/`{m}` placeholders. Events, surprises and chapter scripts carry `tags`; `regionMoods()` combines those tags with the national state. The views are `views/peruMap.js` (the colored map with a hover/tap detail panel) and `views/people.js` (the Sectores/Mapa tabs, the newspaper report and the verdict balance, which weighs each region's average and worst turn).
+- **Phrases.** Sectors and regions carry a `cause`. `sectorVoice`/`regionVoice` pick a random phrase for that cause and avoid the last 40 used. When you add a cause, add several variants.
+- Difficulty (`storage.js` `DIFFICULTIES`, chosen in Configuración) has three levels. `facil` shows colored hints and "inside/outside target" verdicts. `normal` hides judgment colors through the `.hints-off` CSS class. `dificil` adds a wall-clock decision timer (`createTimer` in `play.js`) that pauses while modals are open; when it expires, nothing changes: the rate is held, and in 1990 the previous choice repeats (or printing money on the first month). The tutorial always runs in `facil`.
+- `src/audio/music.js` provides procedural adaptive music with Andean timbres (quena, charango, bombo, cajón). Views call `music.setMood(...)` with `decision`, `announce`, `surprise`, `good`, `bad`, `victory`, `defeat` or `title`. Audio unlocks on the first user gesture.
+- `src/views/` holds the screens. `main.js` routes from the title to one of three modes: the tutorial (`playScenario` + `tutorialScript.js` coach marks), story mode (`story.js` timeline → chapter intro → `playScenario`/`playHyper` → verdict with real-vs-player charts), and free mode. `modal.js` provides the single-modal helper, and `modalOpen()` gates the keyboard shortcuts. `coach.js` queues coach marks so two never overlap. After the last turn, views must not re-render the turn screen, because there is no next event.
+
+## Tuning
+
+Model parameters and scenario shocks are calibrated together. The tests pin the design intent:
+- `test/mandate.test.js` covers free-mode balance over 200 seeds.
+- `test/history.test.js` checks that each chapter is winnable by replaying the real BCRP path (≥80%), that its real moves fit the chapter's `moves` buttons, and that inaction or the hawk does worse where history says so. It also checks that the 1990 chapter needs the Comité de Caja plus the social program.
+
+When you retune a chapter, print its trajectories under several strategies, such as the real path, the staff Taylor rule, hawk, dove and hold, before touching the tests.
+
+## Legacy code
+
+`src/scenes/`, `src/ui/`, `src/managers/`, `src/utils/`, `src/models/` (plural) and `test-audio.html` belong to the previous real-time Phaser version. Nothing imports them and they can be deleted. Don't build on them.
