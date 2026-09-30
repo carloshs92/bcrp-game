@@ -1,4 +1,4 @@
-# Guardián de la Estabilidad
+# Sol Firme
 
 Serious game sobre la política monetaria del Banco Central de Reserva del Perú (BCRP). El jugador se sienta en el Directorio y, reunión a reunión, decide la tasa de interés de referencia para mantener la inflación dentro del rango meta sin provocar una recesión.
 

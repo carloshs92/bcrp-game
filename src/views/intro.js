@@ -7,7 +7,8 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
       <div class="title-card">
         ${building}
         <div class="eyebrow">Un juego sobre el Banco Central de Reserva del Perú</div>
-        <h1>Guardián de la Estabilidad</h1>
+        <h1>Sol Firme</h1>
+        <div class="tagline">Tú diriges el BCR. Todo el Perú te mira.</div>
         <p>Siéntate en el Directorio del BCR. Enfrenta la hiperinflación de 1990, la crisis de 2008, El Niño costero, la pandemia y la inflación de 2022. ¿Harías lo mismo que el BCRP?</p>
         <div class="modes">
           <button class="mode ${story.tutorialDone ? '' : 'primary'}" data-tutorial>

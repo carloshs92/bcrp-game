@@ -224,7 +224,7 @@ export function renderHyperVerdict(root, h, r, { actions }) {
         : `La inflación mensual terminó en ${pct(r.final.inflation)}. Mientras el BCR financie al Estado, los precios no se detienen.`;
     const confetti = r.passed ? '<div class="confetti" aria-hidden="true">' + Array.from({ length: 36 }, () => `<i style="left:${Math.random() * 100}%;background:hsl(${Math.random() * 360},70%,55%);animation-delay:${Math.random() * 0.8}s;animation-duration:${2 + Math.random() * 1.5}s"></i>`).join('') + '</div>' : '';
     root.innerHTML = `
-    <header class="topbar"><div class="brand">${logo}<span>Guardián de la Estabilidad</span></div><div class="spacer"></div>${musicButton()}</header>
+    <header class="topbar"><div class="brand">${logo}<span>Sol Firme</span></div><div class="spacer"></div>${musicButton()}</header>
     <div class="andean-strip">${andeanBand}</div>
     <main class="page" style="max-width:900px">
       <section class="card verdict ${r.passed ? 'win' : 'lose'}">

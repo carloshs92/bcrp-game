@@ -656,7 +656,7 @@ export function renderVerdict(root, m, r, { title, text, reality, sources, achie
         : fanChart({ history: m.history, projection: [], total: m.turns, labels });
 
     root.innerHTML = `
-    <header class="topbar"><div class="brand">${logo}<span>Guardián de la Estabilidad</span></div><div class="spacer"></div>${musicButton()}<button class="btn btn-ghost" data-exit>Salir</button></header>
+    <header class="topbar"><div class="brand">${logo}<span>Sol Firme</span></div><div class="spacer"></div>${musicButton()}<button class="btn btn-ghost" data-exit>Salir</button></header>
     <div class="andean-strip">${andeanBand}</div>
     <main class="page" style="max-width:900px">
       <section class="card verdict ${r.passed ? 'win' : 'lose'}">

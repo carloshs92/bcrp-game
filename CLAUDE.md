@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-"Guardián de la Estabilidad" is an educational serious game about BCRP (Banco Central de Reserva del Perú) monetary policy. The player sits on the BCRP board and, in turn-based monthly meetings, sets the policy rate to keep inflation in the 1–3% target band without causing a recession. All player-facing text is in **Spanish**, so keep new strings in Spanish.
+"Sol Firme" (formerly "Guardián de la Estabilidad") is an educational serious game about BCRP (Banco Central de Reserva del Perú) monetary policy. The player sits on the BCRP board and, in turn-based monthly meetings, sets the policy rate to keep inflation in the 1–3% target band without causing a recession. All player-facing text is in **Spanish**, so keep new strings in Spanish.
 
 The game is plain ES-module JavaScript with DOM, CSS, inline SVG and Web Audio (no framework, no game engine, no asset files), built with Vite. The visual style is institutional with Peruvian touches, such as the Andean textile band and local characters.
 
