@@ -1,7 +1,7 @@
 import { createState, step, inBand, neutralRate, PARAMS } from '../model/economy.js';
 import { EVENTS, EVENT_BY_ID, SURPRISES, SURPRISE_BY_ID } from '../model/events.js';
 import { rateMoods, regionMoods } from './people.js';
-import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, pickDeclaration } from '../model/congress.js';
+import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, BILLS, BILL_RESPONSES, pickDeclaration } from '../model/congress.js';
 
 /**
  * Motor por turnos basado en escenarios. Un turno = `stepsPerTurn` pasos mensuales del
@@ -39,6 +39,17 @@ export function expectedDepreciation(pressure, move, sell) {
 }
 export const DEFAULT_LIMITS = { pressure: 100, credibility: 15, inflation: 7, growth: -3 };
 
+/** El Congreso: qué tan rápido se enoja y cuándo interrumpe al Directorio. */
+export const CONGRESS = {
+    decay: 2,          // cuánto se calma solo cada turno
+    askWeight: 1.75,   // multiplicador del enojo cuando ignoras un pedido de bajar la tasa
+    citeAt: 55,        // desde este enojo te cita
+    citeGap: 2,        // turnos mínimos entre citaciones
+    billGap: 2,        // turnos mínimos entre proyectos de ley
+    billBase: 0.18,    // probabilidad base de un proyecto por turno (+ enojo / 300)
+    insistAt: 75       // con este enojo, aprueban el proyecto aunque te opongas (por insistencia)
+};
+
 export const FREE_SCENARIO = {
     id: 'libre',
     title: 'Modo libre',
@@ -51,6 +62,7 @@ export const FREE_SCENARIO = {
     intensityGrowth: 0.3,
     surpriseChance: 0.3,
     citations: true, // el Congreso cita al Directorio cuando está molesto
+    bills: true,     // y presenta proyectos de ley que afectan al BCR
     fx: { rate: 3.75, reserves: 80 }, // tipo de cambio S/ por US$ y reservas en US$ miles de millones
     reappoint: { minInBand: 9 }
 };
@@ -161,7 +173,7 @@ export default class Mandate {
         // Y el dólar, otro: se consume exactamente una vez por turno, decida lo que decida el jugador.
         this.fxRng = mulberry32((seed ^ 0x27d4eb2f) >>> 0);
         this.year = Number(String(scenario.year ?? scenario.startYear ?? 2027).match(/\d{4}(?!.*\d{4})/)?.[0] ?? 2027);
-        this.congress = { lastCitation: -99, promise: null, pending: null, used: new Set(), citations: 0, promisesBroken: 0 };
+        this.congress = { lastCitation: -99, lastBill: -99, promise: null, pending: null, pendingBill: null, used: new Set(), usedBills: new Set(), citations: 0, promisesBroken: 0, billsPassed: 0 };
         this.event = this.drawEvent();
         this.maybeCite(); // una citación guionada puede abrir el capítulo
     }
@@ -323,6 +335,8 @@ export default class Mandate {
     }
 
     decide(newRate, sell = 0) {
+        // Un proyecto de ley sin respuesta se da por "no opinar".
+        if (this.congress.pendingBill) this.answerBill(2);
         newRate = Math.max(this.minRate, newRate);
         if (!this.fx) sell = 0;
         sell = Math.min(sell, this.maxSale());
@@ -385,11 +399,11 @@ export default class Mandate {
 
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
-        let pressure = this.pressure - 4 + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
+        let pressure = this.pressure - CONGRESS.decay + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
         pressure += surprise?.pressure ?? 0;
         if (event.asks === 'bajar') {
             if (move > 0) {
-                pressure += event.pressure * 1.5;
+                pressure += event.pressure * CONGRESS.askWeight;
                 this.stats.resisted += 1;
                 notes.push({ tone: 'warn', text: 'Ignoraste el pedido de bajar la tasa: sube la presión política.' });
             } else if (move < 0) {
@@ -470,15 +484,55 @@ export default class Mandate {
             c.pending = QUESTIONS.find(q => q.id === scripted);
             return;
         }
-        if (!this.scenario.citations || this.pressure < 65 || this.quarter - c.lastCitation < 3) return;
+        if (!this.scenario.citations || this.pressure < CONGRESS.citeAt || this.quarter - c.lastCitation < CONGRESS.citeGap) return this.maybeBill();
         // Solo preguntas de la época del escenario (sin anacronismos).
         const [from, to] = this.scenario.citationYears ?? [0, this.year];
         const pool = QUESTIONS.filter(q => !c.used.has(q.id) && q.year >= from && q.year <= to);
-        if (!pool.length) return;
+        if (!pool.length) return this.maybeBill();
         const q = pool[Math.floor(this.crng() * pool.length)];
         c.used.add(q.id);
         c.lastCitation = this.quarter;
         c.pending = q;
+    }
+
+    /** El Congreso presenta un proyecto de ley (más probable cuanto más molesto está). */
+    maybeBill() {
+        const c = this.congress;
+        // Nunca en el primer turno: el jugador primero tiene que aprender a decidir.
+        if (this.reference || !this.scenario.bills || c.pending || this.quarter < 1 || this.quarter - c.lastBill < CONGRESS.billGap) return;
+        const [from, to] = this.scenario.billYears ?? [0, this.year];
+        const pool = BILLS.filter(b => !c.usedBills.has(b.id) && b.year >= from && b.year <= to && (!b.effects.reserves || this.fx));
+        if (!pool.length) return;
+        if (this.crng() >= CONGRESS.billBase + this.pressure / 300) return;
+        const b = pool[Math.floor(this.crng() * pool.length)];
+        c.usedBills.add(b.id);
+        c.lastBill = this.quarter;
+        c.pendingBill = b;
+    }
+
+    /**
+     * Responde el proyecto de ley pendiente (0 = oponerse, 1 = negociar, 2 = callar).
+     * Oponerse lo archiva, salvo que el Congreso esté tan molesto que lo apruebe por insistencia.
+     */
+    answerBill(i) {
+        const c = this.congress;
+        const bill = c.pendingBill;
+        if (!bill) return null;
+        const r = BILL_RESPONSES[i];
+        const before = { pressure: this.pressure, credibility: this.state.credibility, reserves: this.fx?.reserves ?? null };
+        const passed = r.style !== 'oponerse' || this.pressure >= CONGRESS.insistAt;
+        const factor = !passed ? 0 : r.style === 'negociar' ? 0.5 : 1;
+        this.pressure = clamp(this.pressure + r.pressure, 0, 100);
+        let cred = this.state.credibility + r.credibility + (bill.effects.credibility ?? 0) * factor;
+        if (factor > 0) {
+            const shock = scaleShock(bill.effects.shock, factor);
+            this.effects.push({ id: bill.id, shock, turnsLeft: bill.effects.turns });
+            if (bill.effects.reserves && this.fx) this.fx.reserves = Math.max(0, this.fx.reserves + bill.effects.reserves * factor);
+            c.billsPassed += 1;
+        }
+        this.state = { ...this.state, credibility: clamp(cred, 0, 100) };
+        c.pendingBill = null;
+        return { bill, response: r, passed, factor, insisted: r.style === 'oponerse' && passed, before, after: { pressure: this.pressure, credibility: this.state.credibility, reserves: this.fx?.reserves ?? null } };
     }
 
     /** Responde la citación pendiente con el estilo de la respuesta `i` (0–2). */

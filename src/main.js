@@ -19,10 +19,16 @@ function title() {
         settings: getSettings(),
         onSettings: settings,
         onTutorial: tutorial,
-        onStory: () => renderStory(root, { onHome: title }),
-        onFree: free,
+        onStory: () => withIntro(() => renderStory(root, { onHome: title })),
+        onFree: () => withIntro(free),
         onIntro: () => renderIntro(root, { onDone: () => { markIntroSeen(); title(); } })
     });
+}
+
+/** La primera vez, cualquier modo empieza por "¿Qué es el BCR?". */
+function withIntro(next) {
+    if (getProgress().introSeen) return next();
+    renderIntro(root, { onDone: () => { markIntroSeen(); next(); } });
 }
 
 function tutorial() {

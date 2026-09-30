@@ -5,12 +5,18 @@ import { staffRecommendation } from '../src/model/economy.js';
 
 const SEEDS = 200;
 
+// Un jugador razonable responde al Congreso: explica el mandato y negocia los proyectos.
+function answerCongress(m) {
+    if (m.congress.pending) m.answerCitation(0);
+    if (m.congress.pendingBill) m.answerBill(1);
+}
+
 // Tasa de reelección de una estrategia sobre muchas semillas.
 function reappointRate(strategy) {
     let won = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
         const m = new Mandate(seed);
-        while (!m.isOver) m.decide(Math.max(0.25, strategy(m)));
+        while (!m.isOver) { answerCongress(m); m.decide(Math.max(0.25, strategy(m))); }
         if (m.evaluate().reappointed) won++;
     }
     return won / SEEDS;
@@ -27,8 +33,8 @@ test('la misma semilla produce la misma partida', () => {
 
 test('un mandato completo tiene 12 trimestres', () => {
     const m = new Mandate(7);
-    while (!m.isOver) m.decide(staffRecommendation(m.state));
-    assert.equal(m.quarter, QUARTERS);
+    while (!m.isOver) { answerCongress(m); m.decide(staffRecommendation(m.state)); }
+    assert.equal(m.quarter, QUARTERS, `terminó antes: ${m.gameOver}`);
 });
 
 test('balance: jugar con criterio gana a menudo, pero no siempre', () => {

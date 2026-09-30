@@ -77,3 +77,30 @@ test('capítulos: la citación guionada ocurre en su trimestre y solo con pregun
         }
     }
 });
+
+test('proyectos de ley: callar deja pasar el proyecto; oponerse lo archiva si el Congreso no está furioso', async () => {
+    const { BILLS } = await import('../src/model/congress.js');
+    const make = pressure => {
+        const m = new Mandate(1);
+        m.pressure = pressure;
+        m.congress.pendingBill = BILLS.find(b => b.id === 'retiro-afp');
+        return m;
+    };
+    const quiet = make(40).answerBill(2);
+    assert.equal(quiet.passed, true);
+    const oppose = make(40).answerBill(0);
+    assert.equal(oppose.passed, false);
+    const insist = make(90).answerBill(0);
+    assert.equal(insist.passed, true, 'con el Congreso furioso lo aprueban por insistencia');
+    const m = make(40);
+    m.answerBill(2);
+    assert.ok(m.effects.some(e => e.id === 'retiro-afp'), 'el retiro de las AFP empuja la demanda');
+});
+
+test('proyectos de ley: todos traen fuente y el hecho real en que se basan', async () => {
+    const { BILLS } = await import('../src/model/congress.js');
+    for (const b of BILLS) {
+        assert.match(b.source, /^https:\/\//);
+        assert.ok(b.basis.length > 30, b.id);
+    }
+});

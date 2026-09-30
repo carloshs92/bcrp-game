@@ -98,3 +98,41 @@ export const andeanBand = `
   </defs>
   <rect width="480" height="12" fill="url(#tocapu)"/>
 </svg>`;
+
+/** Billetes y monedas (genéricos, no reproducen los billetes reales). */
+export const money = `
+<svg viewBox="0 0 300 220" aria-hidden="true">
+  <g transform="rotate(-8 150 110)">
+    <rect x="40" y="60" width="200" height="96" rx="8" fill="#e8d9b5" stroke="#a88b4a" stroke-width="2"/>
+    <rect x="52" y="72" width="176" height="72" rx="5" fill="none" stroke="#a88b4a" stroke-dasharray="4 3"/>
+    <circle cx="140" cy="108" r="24" fill="#f4ecd6" stroke="#a88b4a" stroke-width="2"/>
+    <text x="140" y="116" text-anchor="middle" font-size="22" font-weight="800" fill="#6b5320" font-family="Inter, sans-serif">S/</text>
+    <text x="62" y="92" font-size="14" font-weight="800" fill="#6b5320" font-family="Inter, sans-serif">10</text>
+    <text x="206" y="140" font-size="14" font-weight="800" fill="#6b5320" font-family="Inter, sans-serif">10</text>
+  </g>
+  <g transform="rotate(6 160 120)">
+    <rect x="70" y="80" width="200" height="96" rx="8" fill="#cfe3d6" stroke="#1d7a4c" stroke-width="2"/>
+    <rect x="82" y="92" width="176" height="72" rx="5" fill="none" stroke="#1d7a4c" stroke-dasharray="4 3"/>
+    <circle cx="170" cy="128" r="24" fill="#e6f4ec" stroke="#1d7a4c" stroke-width="2"/>
+    <text x="170" y="136" text-anchor="middle" font-size="22" font-weight="800" fill="#145c39" font-family="Inter, sans-serif">S/</text>
+    <text x="92" y="112" font-size="14" font-weight="800" fill="#145c39" font-family="Inter, sans-serif">20</text>
+    <text x="236" y="160" font-size="14" font-weight="800" fill="#145c39" font-family="Inter, sans-serif">20</text>
+  </g>
+  <circle cx="72" cy="178" r="22" fill="#d9b44a" stroke="#a88b4a" stroke-width="3"/>
+  <text x="72" y="185" text-anchor="middle" font-size="16" font-weight="800" fill="#6b5320" font-family="Inter, sans-serif">S/1</text>
+  <circle cx="112" cy="190" r="16" fill="#c9c9c9" stroke="#8a8a8a" stroke-width="3"/>
+</svg>`;
+
+/** Escudo de la autonomía, rodeado de voces que opinan. */
+export const shield = `
+<svg viewBox="0 0 300 220" aria-hidden="true">
+  <path d="M150 30 L215 55 V110 C215 150 185 175 150 190 C115 175 85 150 85 110 V55 Z" fill="#1b365d"/>
+  <path d="M150 48 L200 67 V110 C200 140 178 160 150 172 C122 160 100 140 100 110 V67 Z" fill="#28508a"/>
+  <text x="150" y="118" text-anchor="middle" font-size="26" font-weight="900" fill="#fff" font-family="Inter, sans-serif">BCR</text>
+  <g font-family="Inter, sans-serif" font-size="12" font-weight="700">
+    <rect x="4" y="30" width="90" height="28" rx="14" fill="#fbe7e5"/><text x="49" y="48" text-anchor="middle" fill="#b3261e">¡Baja la tasa!</text>
+    <rect x="186" y="14" width="110" height="28" rx="14" fill="#f6ecfa"/><text x="241" y="32" text-anchor="middle" fill="#7a2e8e">¡Usa las reservas!</text>
+    <rect x="4" y="150" width="90" height="28" rx="14" fill="#fdf1dd"/><text x="49" y="168" text-anchor="middle" fill="#a15c00">¡Imprime más!</text>
+    <rect x="206" y="150" width="90" height="28" rx="14" fill="#fff"/><text x="251" y="168" text-anchor="middle" fill="#28508a">¿Y el empleo?</text>
+  </g>
+</svg>`;

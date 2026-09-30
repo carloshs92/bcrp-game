@@ -168,6 +168,8 @@ export const CHAPTERS = [
         limits: { growth: -40, credibility: 15 },
         citations: true,
         citationYears: [2020, 2020],
+        bills: true,
+        billYears: [2020, 2020],
         scriptedCitations: { 2: 'congelar-deudas' },
         tools: [{
             id: 'reactiva', name: 'Reactiva Perú', uses: 1,
@@ -218,6 +220,8 @@ export const CHAPTERS = [
         limits: { inflation: 12, credibility: 10 },
         citations: true,
         citationYears: [2021, 2023],
+        bills: true,
+        billYears: [2020, 2023],
         scriptedCitations: { 0: 'dolar-sube' }, // la sesión en Fiscalización fue hacia fines de set. 2021
         // Tipo de cambio promedio de jun. 2021 y RIN aprox. en US$ (BCRPData).
         fx: { rate: 3.910, reserves: 71 },

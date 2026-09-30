@@ -171,9 +171,54 @@ export function congressMood(pressure) {
 
 /** Declaración real acorde a lo que molesta al Congreso, o null. */
 export function pickDeclaration({ move, pressure, year, rng = Math.random }) {
-    if (pressure < 50) return null;
+    // El Congreso opina casi siempre: desde un enojo moderado, o cada vez que subes la tasa.
+    if (pressure < 30 && move <= 0) return null;
     const topic = move > 0 ? 'tasa' : pressure >= 80 ? 'autonomia' : 'crecimiento';
     const pool = DECLARATIONS.filter(d => d.topic === topic && d.year <= year);
     const any = pool.length ? pool : DECLARATIONS.filter(d => d.year <= year);
     return any.length ? any[Math.floor(rng() * any.length)] : null;
 }
+
+/**
+ * Proyectos de ley que el Congreso presenta y que afectan al BCR. Todos son RECREACIONES
+ * de iniciativas reales (`basis` + `source`); el texto del juego no es una cita.
+ * `effects.pass`: lo que ocurre si se aprueba tal cual (choque durante `turns` turnos,
+ * credibilidad, reservas). Negociar aplica la mitad; oponerse puede frenarlo.
+ */
+export const BILLS = [
+    {
+        id: 'retiro-afp', year: 2020, title: 'Proyecto de ley: un nuevo retiro de fondos de las AFP',
+        basis: 'en 2020 el Congreso aprobó el primer retiro de hasta 25% de los fondos de las AFP, con 105 votos a favor; luego vinieron varios retiros más',
+        source: 'https://www.tvperu.gob.pe/noticias/politica/congreso-aprobo-retiro-del-25-de-los-fondos-de-afp',
+        text: 'Los congresistas quieren liberar otra parte de los fondos de pensiones. Es plata en el bolsillo hoy… que empuja el consumo, sube los precios y deja pensiones más bajas mañana.',
+        effects: { shock: { demand: 1.4, supply: 0.2 }, turns: 1, credibility: -3 }
+    },
+    {
+        id: 'topes-tasas', year: 2020, title: 'Proyecto de ley: topes a las tasas de interés',
+        basis: 'la Ley 31143 (2021), aprobada por insistencia, obligó al BCR a fijar tasas máximas al crédito de consumo',
+        source: 'https://www.mef.gob.pe/es/funciones/833-estadisticas-de-deuda-publica/6982-ministro-mendoza-gobierno-observara-la-ley-contra-la-usura-bancaria-aprobada-por-insistencia-por-el-congreso',
+        text: 'El Congreso quiere que el BCR fije un techo a lo que cobran bancos y cajas. Suena justo, pero quienes más riesgo tienen podrían quedarse sin crédito formal y caer en manos del prestamista informal.',
+        effects: { shock: { demand: -0.5 }, turns: 2, credibility: -2 }
+    },
+    {
+        id: 'oro-bcr', year: 2025, title: 'Proyecto de ley: que el BCR guarde el oro de las mineras',
+        basis: 'en 2025 se presentó el proyecto 12172/2025-CR para que el BCR reciba en custodia oro extraído legalmente y lo cuente como reservas',
+        source: 'https://www.rumbominero.com/peru/noticias/mineria/congreso-propone-que-bcrp-custodie-oro-minero-pese-a-record-historico-de-reservas/',
+        text: 'Proponen que el BCR guarde oro de mineras privadas y lo cuente como parte de las reservas. Los economistas advierten que son activos poco líquidos y que pone en riesgo la institucionalidad del BCR.',
+        effects: { shock: {}, turns: 1, credibility: -4 }
+    },
+    {
+        id: 'usar-reservas', year: 2026, title: 'Proyecto de ley: usar parte de las reservas para obras',
+        basis: 'en 2026, en una sesión con el presidente del BCR, legisladores plantearon usar "una fracción marginal" de las reservas para infraestructura',
+        source: 'https://peru21.pe/economia/jpp-quiere-que-se-pueda-intervenir-la-autonomia-del-bcr/',
+        text: 'Quieren tomar una parte de las reservas internacionales para financiar obras. Pero las reservas no son una caja chica: respaldan al sol y protegen al país en las crisis.',
+        effects: { shock: { demand: 0.4 }, turns: 1, credibility: -6, reserves: -8 }
+    }
+];
+
+/** Respuestas del Directorio ante un proyecto de ley. */
+export const BILL_RESPONSES = [
+    { style: 'oponerse', label: 'Advertir públicamente los riesgos', text: 'El BCR publica un informe técnico y su presidente sale a los medios a explicar por qué el proyecto es dañino.', pressure: 12, credibility: 3 },
+    { style: 'negociar', label: 'Negociar una versión más moderada', text: 'El BCR se reúne con la comisión y propone cambios para reducir el daño.', pressure: -10, credibility: -1 },
+    { style: 'callar', label: 'No opinar: es un tema del Congreso', text: 'El BCR guarda silencio para no enfrentarse con los congresistas.', pressure: 0, credibility: -3 }
+];

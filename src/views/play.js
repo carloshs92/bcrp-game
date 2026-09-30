@@ -9,7 +9,7 @@ import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
-import { congressMood } from '../model/congress.js';
+import { congressMood, BILL_RESPONSES } from '../model/congress.js';
 import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';
@@ -140,6 +140,18 @@ export async function announceSuspense(text) {
     overlay.remove();
 }
 
+/** Franja fija: quién eres y qué tienes que lograr. */
+function missionBar(m, opts) {
+    const goals = m.scenario.goals
+        ? m.scenario.goals.map(g => g.label ?? ({ finalInBand: 'terminar con la inflación entre 1% y 3%' }[g.type] ?? '')).filter(Boolean)
+        : [`inflación entre 1% y 3% (${m.scenario.reappoint?.minInBand ?? 9} de ${m.turns} trimestres y al final)`, 'sin hundir la economía', 'que el Congreso no te saque'];
+    return `
+    <div class="mission" role="note">
+      <span class="mission-role"><strong>Tú diriges el BCR.</strong> Decides la tasa${m.fx ? ' y cuándo vender o comprar dólares' : ''}.</span>
+      <span class="mission-goal"><strong>Tu objetivo:</strong> ${goals.map(g => g.charAt(0).toLowerCase() + g.slice(1)).join(' · ')}.</span>
+    </div>`;
+}
+
 const FX_LABEL = { 3: 'Vender 3', 1.5: 'Vender 1.5', 0: 'No intervenir', '-1.5': 'Comprar 1.5', '-3': 'Comprar 3' };
 
 /** Bloque del mercado cambiario en la tarjeta de decisión. */
@@ -226,6 +238,7 @@ export function playScenario(root, scenario, opts) {
           <button class="btn btn-ghost" data-exit>Salir</button>
         </header>
         <div class="andean-strip">${andeanBand}</div>
+        ${missionBar(m, opts)}
         <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
           <div class="meters${m.fx ? ' five' : ''}">${meters(m)}</div>
           <div class="mandate-grid">
@@ -262,9 +275,60 @@ export function playScenario(root, scenario, opts) {
         music.setMood('decision');
         // Si el Congreso te citó, la sesión va antes de la reunión del Directorio.
         if (m.congress.pending) return showCitation();
+        if (m.congress.pendingBill) return showBill();
         const steps = opts.coachSteps?.briefing?.[m.quarter];
         if (steps) coach(steps(m));
         timer.start();
+    };
+
+    const showBill = () => {
+        const b = m.congress.pendingBill;
+        const hints = ['El Congreso se molesta más, pero la gente confía en el BCR', 'Calma al Congreso, pero el proyecto pasa a medias', 'No te peleas con nadie, pero el proyecto pasa completo'];
+        music.setMood('surprise');
+        music.sting();
+        const modal = openModal(`
+          <div class="citation bill">
+            <div class="breaking-tag">PROYECTO DE LEY</div>
+            <h2>${b.title}</h2>
+            <div class="question">
+              <small>Basado en un hecho real (${b.year}): ${b.basis}</small>
+              <p>${b.text}</p>
+            </div>
+            <p class="lead">El BCR no vota las leyes, pero su opinión pesa. ¿Qué hace el Directorio?</p>
+            <div class="answers">${BILL_RESPONSES.map((r, i) => `
+              <button class="answer" data-bill="${i}">
+                <strong>${r.label}</strong>
+                <span>${r.text}</span>
+                ${diff.hints ? `<small>${hints[i]}</small>` : ''}
+              </button>`).join('')}
+            </div>
+          </div>`, { dismissible: false, wide: true });
+        modal.querySelectorAll('[data-bill]').forEach(btn => btn.addEventListener('click', () => {
+            const r = m.answerBill(Number(btn.dataset.bill));
+            music.setMood(r.passed ? 'bad' : 'good');
+            const outcome = !r.passed ? 'El proyecto se archivó. Esta vez ganó el argumento técnico.'
+                : r.insisted ? 'Te opusiste, pero el Congreso estaba tan molesto que lo aprobó por insistencia.'
+                    : r.factor < 1 ? 'Se aprobó una versión moderada: el daño es menor, pero existe.'
+                        : 'El proyecto se aprobó tal cual.';
+            modal.innerHTML = `
+              <div class="citation">
+                <div class="eyebrow">Resultado de la votación</div>
+                <h2>${r.passed ? 'Aprobado' : 'Archivado'}</h2>
+                <p class="lead">${outcome}</p>
+                <div class="deltas two">
+                  <span class="delta">Enojo del Congreso <strong class="num">${Math.round(r.after.pressure)}</strong><small>antes ${Math.round(r.before.pressure)}</small></span>
+                  <span class="delta">Credibilidad <strong class="num">${Math.round(r.after.credibility)}</strong><small>antes ${Math.round(r.before.credibility)}</small></span>
+                </div>
+                ${r.passed && r.bill.effects.shock?.demand ? `<div class="note warn">Efecto en la economía: ${r.bill.effects.shock.demand > 0 ? 'más gasto y más presión sobre los precios' : 'menos crédito y menos gasto'} en ${r.bill.effects.turns === 1 ? 'el próximo trimestre' : `los próximos ${r.bill.effects.turns} trimestres`}. Tenlo en cuenta al decidir la tasa.</div>` : ''}
+                ${r.passed && r.bill.effects.reserves && r.after.reserves != null ? `<div class="note bad">Las reservas bajan a US$ ${r.after.reserves.toFixed(1)} mil millones.</div>` : ''}
+                <div class="modal-actions"><button class="btn btn-primary" data-back>Volver al Directorio</button></div>
+              </div>`;
+            modal.querySelector('[data-back]').addEventListener('click', () => {
+                modal.parentElement._close();
+                render();
+                briefingCoach();
+            });
+        }));
     };
 
     const showCitation = () => {

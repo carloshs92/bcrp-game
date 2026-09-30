@@ -75,6 +75,10 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
           <button class="btn btn-ghost" data-exit>Salir</button>
         </header>
         <div class="andean-strip">${andeanBand}</div>
+        <div class="mission" role="note">
+          <span class="mission-role"><strong>Tú diriges el BCR en 1990.</strong> Decides si sigue imprimiendo dinero para el Estado.</span>
+          <span class="mission-goal"><strong>Tu objetivo:</strong> bajar la inflación mensual a 10% o menos · evitar un estallido social · recuperar la confianza.</span>
+        </div>
         <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
           <div class="meters">${meters(h)}</div>
           <div class="mandate-grid">
