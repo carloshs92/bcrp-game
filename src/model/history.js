@@ -20,7 +20,6 @@ export const TUTORIAL = {
     turns: 3,
     labels: ['T1', 'T2', 'T3'],
     initial: { rate: 4.25, outputGap: 0.8, core: 2.8, supply: 0.2, expectations: 2.5, credibility: 80 },
-    pressure: 15,
     script: [
         ev('t1', 'gamarra', 'Gamarra no para de vender', '¡Estamos vendiendo como en campaña navideña! La gente saca préstamos para todo, caserito.', { demand: 0.9 }, { kind: 'demanda' }),
         ev('t2', 'ministro', 'El MEF quiere reactivar', 'Una tasa más baja ayudaría a que la inversión despegue. ¿Qué dice el BCR?', { demand: 0.3 }, { kind: 'politica', asks: 'bajar', pressure: 8 }),
@@ -72,7 +71,6 @@ export const CHAPTERS = [
         monthlyMeetings: true,
         moves: [-3, -2, -1.75, -1, -0.5, -0.25, 0, 0.25, 0.5, 0.75],
         initial: { rate: 5.0, outputGap: 2.5, core: 3.0, supply: 0.9, expectations: 2.8, credibility: 80 },
-        pressure: 15,
         limits: { inflation: 9, growth: -6 },
         // Tipo de cambio promedio de dic. 2007 (BCRPData PN01234PM) y RIN aprox. en US$ (PN00026MM ÷ tipo de cambio).
         fx: { rate: 2.981, reserves: 27.9 },
@@ -124,7 +122,6 @@ export const CHAPTERS = [
         params: { potentialGrowth: 3.5 },
         monthlyMeetings: true,
         initial: { rate: 4.25, outputGap: -0.6, core: 2.9, supply: 0.3, expectations: 2.6, credibility: 82 },
-        pressure: 20,
         script: [
             ev('17a', 'caserita', 'El limón y la cebolla por las nubes', 'Los huaicos cortaron las carreteras del norte. El limón está a quince soles el kilo, hijito.', { supply: 2.1, demand: -0.8 }, { kind: 'oferta', asks: 'subir' }),
             ev('17b', 'agricultor', 'Las carreteras se reabren', 'Ya estamos sacando la cosecha otra vez. Los precios empiezan a bajar.', { supply: -1.5, demand: -0.6 }, { kind: 'oferta' }),
@@ -164,7 +161,6 @@ export const CHAPTERS = [
         monthlyMeetings: true,
         moves: [-1, -0.5, -0.25, 0, 0.25, 0.5],
         initial: { rate: 2.25, outputGap: -0.3, core: 2.1, supply: -0.2, expectations: 2.1, credibility: 85 },
-        pressure: 15,
         limits: { growth: -40, credibility: 15 },
         citations: true,
         citationYears: [2020, 2020],
@@ -216,7 +212,6 @@ export const CHAPTERS = [
         monthlyMeetings: true,
         moves: [-0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1, 1.25, 1.5],
         initial: { rate: 0.25, outputGap: 0.5, core: 2.2, supply: 1.0, expectations: 2.5, credibility: 80 },
-        pressure: 20,
         limits: { inflation: 12, credibility: 10 },
         citations: true,
         citationYears: [2021, 2023],

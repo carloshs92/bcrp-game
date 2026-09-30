@@ -86,7 +86,8 @@ test('interludios: cada capítulo tiene entrada (aunque sea vacía)', () => {
 test('puntaje: copiar al BCRP real da exactamente 100% (mismos imprevistos)', () => {
     for (const ch of rateChapters) {
         for (const seed of [1, 2, 3]) {
-            const m = new Mandate(seed, ch);
+            // Sin proyectos de ley: sus choques son del jugador, no del camino real del BCRP.
+            const m = new Mandate(seed, { ...ch, bills: false });
             let i = 0;
             while (!m.isOver) {
                 if (i === 1) m.tools.forEach(t => m.useTool(t.id));

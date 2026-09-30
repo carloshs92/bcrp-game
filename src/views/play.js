@@ -1,4 +1,4 @@
-import Mandate, { FX_MOVES, expectedDepreciation } from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -70,7 +70,7 @@ function meters(m) {
             display: `<span class="congress-val">${face(congressMood(m.pressure).mood, 26)}${congressMood(m.pressure).label}</span>`,
             pos: m.pressure / 100, danger: [0.8, 1],
             tone: m.pressure < 50 ? 'good' : m.pressure < 80 ? 'warn' : 'bad',
-            sub: `Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ' · te cita desde 65' : ''} · pierdes en 100`
+            sub: `Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ` · te cita desde ${CONGRESS.citeAt}` : ''} · pierdes en 100`
         }),
         ...(m.fx ? [meter({
             id: 'm-fx', label: 'Dólar', term: 'intervencion', ico: 'dollar', display: `S/ ${m.fx.rate.toFixed(3)}`,
@@ -175,18 +175,31 @@ function fxBlock(m, move, sell, diff) {
 
 /** Quién gana y quién pierde con la intervención cambiaria. */
 function fxTradeoff(sell) {
-    if (sell > 0) return { win: 'Quienes deben en dólares y quienes compran importados.', lose: 'Las reservas: quedan menos para la próxima crisis.' };
-    if (sell < 0) return { win: 'Exportadores y el colchón de reservas.', lose: 'Quienes deben en dólares: el dólar sube un poco más.' };
-    return { win: 'Nadie en particular: el mercado decide.', lose: 'Si hay presión, el dólar se mueve sin freno.' };
+    if (sell > 0) return { win: 'Quienes deben en dólares y quienes compran importados.', lose: 'Las reservas: quedan menos para la próxima crisis.', winWho: ['deudoresUsd', 'importadores'], loseWho: ['reservas'] };
+    if (sell < 0) return { win: 'Exportadores y el colchón de reservas.', lose: 'Quienes deben en dólares: el dólar sube un poco más.', winWho: ['exportadores', 'reservas'], loseWho: ['deudoresUsd'] };
+    return { win: 'Nadie en particular: el mercado decide.', lose: 'Si hay presión, el dólar se mueve sin freno.', winWho: [], loseWho: [] };
 }
+
+/** Grupos del cuadro "quién gana y quién pierde": ícono y nombre corto. */
+const GROUPS = {
+    ahorristas: ['piggy', 'Ahorristas'], jubilados: ['elder', 'Jubilados'], familias: ['home', 'Familias'],
+    deudores: ['card', 'Deudores'], mypes: ['store', 'Mypes'], empleo: ['briefcase', 'Empleo'],
+    deudoresUsd: ['card', 'Deudores en US$'], importadores: ['box', 'Importadores'],
+    exportadores: ['ship', 'Exportadores'], reservas: ['vault', 'Reservas']
+};
+const groupChips = (ids, side) => ids.length
+    ? `<span class="tt-chips">${ids.map(id => `<span class="tt-chip ${side}" title="${GROUPS[id][1]}">${icon(GROUPS[id][0], { size: 15 })}<small>${GROUPS[id][1]}</small></span>`).join('')}</span>`
+    : `<span class="tt-chips"><span class="tt-chip none">${icon('equal', { size: 15 })}<small>Sin cambio</small></span></span>`;
 
 /** Un solo cuadro de "quién gana y quién pierde": una fila por decisión. */
 function tradeoffTable(move, sell, withFx) {
     const rows = [['Tasa', rateTradeoff(move)], ...(withFx ? [['Dólares', fxTradeoff(sell)]] : [])];
     return `
       <div class="tradeoff-table" role="table" aria-label="Quién gana y quién pierde">
-        <div class="tt-head" role="row"><span></span><span>Ganan</span><span>Pierden</span></div>
-        ${rows.map(([k, t]) => `<div class="tt-row" role="row"><strong>${k}</strong><span>${t.win}</span><span>${t.lose}</span></div>`).join('')}
+        <div class="tt-head" role="row"><span></span><span>${face(1, 20)}Ganan</span><span>${face(-1, 20)}Pierden</span></div>
+        ${rows.map(([k, t]) => `<div class="tt-row" role="row"><strong>${k}</strong>
+          <span>${groupChips(t.winWho, 'win')}${t.win}</span>
+          <span>${groupChips(t.loseWho, 'lose')}${t.lose}</span></div>`).join('')}
       </div>`;
 }
 

@@ -162,11 +162,12 @@ export const ANSWER_EFFECTS = {
 
 /** Estado de ánimo del Congreso según la presión (0–100). */
 export function congressMood(pressure) {
+    // Nunca está contento: en el mejor caso, solo vigila.
     if (pressure >= 85) return { mood: -2, label: 'Quiere tu cabeza' };
-    if (pressure >= 65) return { mood: -1, label: 'Molesto' };
-    if (pressure >= 40) return { mood: 0, label: 'Vigilante' };
-    if (pressure >= 20) return { mood: 1, label: 'Tranquilo' };
-    return { mood: 2, label: 'Contento' };
+    if (pressure >= 65) return { mood: -2, label: 'Furioso' };
+    if (pressure >= 45) return { mood: -1, label: 'Molesto' };
+    if (pressure >= 25) return { mood: 0, label: 'Vigilante' };
+    return { mood: 0, label: 'Tranquilo, por ahora' };
 }
 
 /** Declaración real acorde a lo que molesta al Congreso, o null. */

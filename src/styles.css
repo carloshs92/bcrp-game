@@ -796,3 +796,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .mode:hover .mode-ico { transform: rotate(-6deg) scale(1.06); }
 .mode strong, .mode small { grid-column: 2; }
 .mode .pill { grid-column: 3; }
+
+/* Cuadro "quién gana y quién pierde": caritas en el encabezado y un dibujo por grupo. */
+.tt-head span { display: inline-flex; align-items: center; gap: 6px; }
+.tt-head .face { flex: none; }
+.tt-row > span { display: grid; gap: 6px; align-content: start; }
+.tt-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.tt-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px 3px 5px; border-radius: 999px; font-weight: 600; animation: rise .3s ease backwards; }
+.tt-chip small { font-size: 11.5px; }
+.tt-chip.win { background: var(--good-bg); color: var(--good); }
+.tt-chip.lose { background: var(--bad-bg); color: var(--bad); }
+.tt-chip.none { background: var(--surface); color: var(--muted); border: 1px solid var(--line); }
+.tt-chip:nth-child(2) { animation-delay: .05s; }
+.tt-chip:nth-child(3) { animation-delay: .1s; }
+@media (max-width: 640px) {
+    .tt-chip small { display: none; }
+    .tt-chip { padding: 4px; }
+}

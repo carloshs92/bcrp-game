@@ -41,9 +41,10 @@ export const DEFAULT_LIMITS = { pressure: 100, credibility: 15, inflation: 7, gr
 
 /** El Congreso: qué tan rápido se enoja y cuándo interrumpe al Directorio. */
 export const CONGRESS = {
-    decay: 2,          // cuánto se calma solo cada turno
-    askWeight: 1.75,   // multiplicador del enojo cuando ignoras un pedido de bajar la tasa
-    citeAt: 55,        // desde este enojo te cita
+    start: 50,         // enojo inicial: el Congreso ya llega molesto con el BCR
+    revert: 0.3,       // cada turno el enojo vuelve este tanto hacia `start` (nunca se calma del todo)
+    askWeight: 1.25,   // multiplicador del enojo cuando ignoras un pedido de bajar la tasa
+    citeAt: 60,        // desde este enojo te cita
     citeGap: 2,        // turnos mínimos entre citaciones
     billGap: 2,        // turnos mínimos entre proyectos de ley
     billBase: 0.18,    // probabilidad base de un proyecto por turno (+ enojo / 300)
@@ -56,7 +57,6 @@ export const FREE_SCENARIO = {
     turns: 12,
     startYear: 2027,
     initial: { rate: 4.25, outputGap: 0.3, core: 2.4, supply: 0.1, expectations: 2.3, credibility: 80 },
-    pressure: 20,
     firstEvent: 'consumo-sube',
     randomEvents: true,
     intensityGrowth: 0.3,
@@ -153,7 +153,7 @@ export default class Mandate {
         this.fxStart = this.fx?.rate ?? null;
         this.state = createState(scenario.initial);
         this.state.growth = this.params.potentialGrowth + this.state.outputGap;
-        this.pressure = scenario.pressure ?? 20;
+        this.pressure = scenario.pressure ?? CONGRESS.start;
         this.quarter = 0;
         this.streak = 0;
         this.bestStreak = 0;
@@ -399,7 +399,7 @@ export default class Mandate {
 
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
-        let pressure = this.pressure - CONGRESS.decay + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
+        let pressure = this.pressure + (CONGRESS.start - this.pressure) * CONGRESS.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
         pressure += surprise?.pressure ?? 0;
         if (event.asks === 'bajar') {
             if (move > 0) {

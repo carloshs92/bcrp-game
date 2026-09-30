@@ -282,15 +282,18 @@ export function strongestVoice(moods) {
 export function rateTradeoff(move) {
     if (move > 0) return {
         win: 'Ahorristas, jubilados y, si la inflación baja, las familias que viven del día.',
-        lose: 'Quienes tienen deudas, las mypes y el empleo en los próximos trimestres.'
+        lose: 'Quienes tienen deudas, las mypes y el empleo en los próximos trimestres.',
+        winWho: ['ahorristas', 'jubilados', 'familias'], loseWho: ['deudores', 'mypes', 'empleo']
     };
     if (move < 0) return {
         win: 'Quienes tienen deudas, las mypes y el empleo.',
-        lose: 'Ahorristas y jubilados; y si la inflación sube, las familias más pobres.'
+        lose: 'Ahorristas y jubilados; y si la inflación sube, las familias más pobres.',
+        winWho: ['deudores', 'mypes', 'empleo'], loseWho: ['ahorristas', 'jubilados', 'familias']
     };
     return {
         win: 'Nadie siente un cambio inmediato.',
-        lose: 'Lo que ya está en marcha sigue su curso: si la inflación sube o la economía se frena, nadie lo detiene.'
+        lose: 'Lo que ya está en marcha sigue su curso: si la inflación sube o la economía se frena, nadie lo detiene.',
+        winWho: [], loseWho: []
     };
 }
 
