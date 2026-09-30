@@ -67,8 +67,7 @@ test('capítulos: la citación guionada ocurre en su trimestre y solo con pregun
     assert.equal(m.congress.pending?.id, 'congelar-deudas');
     const ch2 = CHAPTER_BY_ID['inflacion-2022'];
     const m2 = new Mandate(1, ch2);
-    m2.decide(1);
-    assert.equal(m2.congress.pending?.id, 'dolar-sube');
+    assert.equal(m2.congress.pending?.id, 'dolar-sube', 'la citación del dólar abre el capítulo (T3 2021)');
     // Nunca una pregunta posterior al capítulo.
     for (let seed = 1; seed <= 30; seed++) {
         const x = new Mandate(seed, ch2);

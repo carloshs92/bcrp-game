@@ -163,6 +163,7 @@ export default class Mandate {
         this.year = Number(String(scenario.year ?? scenario.startYear ?? 2027).match(/\d{4}(?!.*\d{4})/)?.[0] ?? 2027);
         this.congress = { lastCitation: -99, promise: null, pending: null, used: new Set(), citations: 0, promisesBroken: 0 };
         this.event = this.drawEvent();
+        this.maybeCite(); // una citación guionada puede abrir el capítulo
     }
 
     get isOver() {

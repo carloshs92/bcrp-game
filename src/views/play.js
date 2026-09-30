@@ -357,7 +357,11 @@ export function playScenario(root, scenario, opts) {
           ${tradeoffTable(move, sell, !!m.fx)}
           <div class="decision-actions">
             ${diff.timer ? '<div class="timer-slot"></div>' : ''}
-            <span class="press-hint">${diff.hints ? (endOk ? 'La proyección termina dentro de la meta.' : 'La proyección termina fuera de la meta.') : ''}${pressHint}${rate <= m.minRate + 1e-9 ? ' · La tasa ya está en su piso (0.25%).' : ''}</span>
+            <span class="press-hint">${[
+                diff.hints ? (endOk ? 'La proyección termina dentro de la meta.' : 'La proyección termina fuera de la meta.') : '',
+                pressHint.replace(/^ · /, ''),
+                rate <= m.minRate + 1e-9 ? 'La tasa ya está en su piso (0.25%).' : ''
+            ].filter(Boolean).join(' · ')}</span>
             <button class="btn btn-primary" data-announce>Anunciar decisión <span class="kbd">Enter</span></button>
           </div>`;
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));

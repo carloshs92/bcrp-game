@@ -30,6 +30,8 @@ Serious game sobre la política monetaria del Banco Central de Reserva del Perú
 - **Debate halcón/paloma** en el Directorio.
 - **Proyección en vivo** de la inflación.
 - **Imprevistos de "¡Última hora!"** que aparecen después de anunciar la decisión.
+- **El Congreso:** su humor cambia con tus decisiones. Si se molesta, te cita y respondes con preguntas reales hechas por congresistas (anónimas) o recreaciones rotuladas de episodios reales. Una promesa te compromete el turno siguiente.
+- **Dólar y reservas** (Modo Libre, 2008 y 2021–23): vendes o compras dólares junto con la tasa. El tipo de cambio se traslada a los precios, golpea a quienes deben en dólares y gasta reservas.
 - **Cómo lo vive la gente:** cinco sectores con caritas y testimonios que cambian según la causa (alimentos caros, crédito caro, despidos…), más un **mapa del Perú por departamentos**. Cada región tiene su perfil económico (minería, agro, pesca, turismo, peso de los alimentos, exposición a El Niño y a las heladas) y un personaje local. El mapa se basa en [Natural Earth](https://www.naturalearthdata.com/), que es de dominio público.
 - **Música adaptativa** con timbres andinos generada en el navegador, con estados distintos para decidir, anunciar, un imprevisto, un buen resultado y un mal resultado.
 

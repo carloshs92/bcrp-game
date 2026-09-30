@@ -218,7 +218,7 @@ export const CHAPTERS = [
         limits: { inflation: 12, credibility: 10 },
         citations: true,
         citationYears: [2021, 2023],
-        scriptedCitations: { 1: 'dolar-sube' },
+        scriptedCitations: { 0: 'dolar-sube' }, // la sesión en Fiscalización fue hacia fines de set. 2021
         // Tipo de cambio promedio de jun. 2021 y RIN aprox. en US$ (BCRPData).
         fx: { rate: 3.910, reserves: 71 },
         script: [

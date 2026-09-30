@@ -76,14 +76,6 @@ export function regionsReport(regions) {
     ${peruMap(regions, { size: 'md' })}`;
 }
 
-/** Bloque para el diario en una sola columna (sectores + regiones). */
-export function peopleReport(moods, regions) {
-    return `
-    <div class="section-title">Cómo lo vive la gente</div>
-    ${sectorsReport(moods)}
-    ${regions ? `<div class="section-title">El país por regiones</div>${regionsReport(regions)}` : ''}`;
-}
-
 /** Cuántos sectores lo están pasando mal: para el aviso en la pestaña. */
 export function hurtCount(moods) {
     return moods.filter(s => s.mood < 0).length;
