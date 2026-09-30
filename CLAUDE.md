@@ -45,7 +45,3 @@ Model parameters and scenario shocks are calibrated together. The tests pin the 
 - `test/history.test.js` checks that each chapter is winnable by replaying the real BCRP path (≥80%), that its real moves fit the chapter's `moves` buttons, and that inaction or the hawk does worse where history says so. It also checks that the 1990 chapter needs the Comité de Caja plus the social program.
 
 When you retune a chapter, print its trajectories under several strategies, such as the real path, the staff Taylor rule, hawk, dove and hold, before touching the tests.
-
-## Legacy code
-
-`src/scenes/`, `src/ui/`, `src/managers/`, `src/utils/`, `src/models/` (plural) and `test-audio.html` belong to the previous real-time Phaser version. Nothing imports them and they can be deleted. Don't build on them.
