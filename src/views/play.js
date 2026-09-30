@@ -9,6 +9,8 @@ import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
+import { congressMood } from '../model/congress.js';
+import { face } from './people.js';
 import { peoplePanel, peopleReport, peopleBalance, bindPeople } from './people.js';
 import { bindMap } from './peruMap.js';
 
@@ -18,7 +20,7 @@ const help = term => `<button class="help" data-term="${term}" aria-label="¿Qu�
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 export const GAME_OVER = {
-    presion: { title: 'El Congreso cita al Directorio y exige su salida', text: 'La presión política llegó al límite. Un banco central necesita respaldo para mantener su autonomía.' },
+    presion: { title: 'El Congreso busca remover al Directorio', text: 'Con el Congreso en tu contra, se acusa al Directorio de "falta grave", la única causa por la que la Constitución permite removerlo. Sin respaldo político, la autonomía se vuelve frágil.' },
     credibilidad: { title: 'Crisis de confianza en el BCR', text: 'Nadie cree que la inflación vaya a volver a la meta. Sin credibilidad, las expectativas se desanclan.' },
     inflacion: { title: 'La inflación se descontrola', text: 'Los peruanos recuerdan bien lo que pasa cuando los precios se desbocan. Esta vez no hubo freno a tiempo.' },
     recesion: { title: 'Recesión profunda', text: 'La economía se contrajo con fuerza. Frenar la inflación a costa del empleo también es fracasar.' }
@@ -62,9 +64,11 @@ function meters(m) {
             tone: s.credibility >= 60 ? 'good' : s.credibility >= 35 ? 'warn' : 'bad', sub: `Expectativas: ${pct(s.expectations)} · pierdes bajo ${L.credibility}`
         }),
         meter({
-            id: 'm-press', label: 'Presión política', term: 'autonomia', display: `${Math.round(m.pressure)}`,
+            id: 'm-press', label: 'Congreso', term: 'autonomia',
+            display: `<span class="congress-val">${face(congressMood(m.pressure).mood, 26)}${congressMood(m.pressure).label}</span>`,
             pos: m.pressure / 100, danger: [0.8, 1],
-            tone: m.pressure < 50 ? 'good' : m.pressure < 80 ? 'warn' : 'bad', sub: 'Las alzas son impopulares · pierdes en 100'
+            tone: m.pressure < 50 ? 'good' : m.pressure < 80 ? 'warn' : 'bad',
+            sub: `Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ' · te cita desde 65' : ''} · pierdes en 100`
         })
     ].join('');
 }
@@ -206,9 +210,59 @@ export function playScenario(root, scenario, opts) {
     // El guion del tutorial para el turno se muestra cuando el turno empieza de verdad.
     const briefingCoach = () => {
         music.setMood('decision');
+        // Si el Congreso te citó, la sesión va antes de la reunión del Directorio.
+        if (m.congress.pending) return showCitation();
         const steps = opts.coachSteps?.briefing?.[m.quarter];
         if (steps) coach(steps(m));
         timer.start();
+    };
+
+    const showCitation = () => {
+        const q = m.congress.pending;
+        const labels = { tecnica: 'Responder con el mandato', promesa: 'Calmar con una promesa', evasiva: 'Salir por la tangente' };
+        const hints = { tecnica: '+ credibilidad · el Congreso se molesta más', promesa: 'calma al Congreso · te compromete a no subir la tasa', evasiva: 'no compromete · − credibilidad' };
+        music.setMood('surprise');
+        music.sting();
+        const modal = openModal(`
+          <div class="citation">
+            <div class="breaking-tag">CITACIÓN</div>
+            <h2>El Congreso cita al Directorio del BCR</h2>
+            <p class="lead">Estás molestando a los congresistas y te piden explicaciones. Responde con cuidado: lo que digas aquí también lo escuchan los mercados.</p>
+            <div class="question">
+              <small>Pregunta real hecha en el Congreso (${q.year}, ${q.context})</small>
+              <p>“${q.text}”</p>
+              ${q.note ? `<span class="q-note">Dato: ${q.note}</span>` : ''}
+            </div>
+            <div class="answers">${q.answers.map((a, i) => `
+              <button class="answer" data-answer="${i}">
+                <strong>${labels[a.style]}</strong>
+                <span>“${a.text}”</span>
+                ${diff.hints ? `<small>${hints[a.style]}</small>` : ''}
+              </button>`).join('')}
+            </div>
+          </div>`, { dismissible: false, wide: true });
+        modal.querySelectorAll('[data-answer]').forEach(b => b.addEventListener('click', () => {
+            const r = m.answerCitation(Number(b.dataset.answer));
+            music.setMood(r.fx.pressure < 0 ? 'good' : 'bad');
+            modal.innerHTML = `
+              <div class="citation">
+                <div class="eyebrow">Después de la sesión</div>
+                <h2>${r.fx.pressure < 0 ? 'El Congreso baja el tono' : 'El Congreso sale más molesto'}</h2>
+                <p class="lead">${r.fx.result}</p>
+                ${r.followUp ? `<div class="question"><small>Réplica real (${r.followUp.year}, ${r.followUp.context})</small><p>“${r.followUp.text}”</p></div>` : ''}
+                <div class="deltas two">
+                  <span class="delta">Enojo del Congreso <strong class="num">${Math.round(r.after.pressure)}</strong><small>antes ${Math.round(r.before.pressure)}</small></span>
+                  <span class="delta">Credibilidad <strong class="num">${Math.round(r.after.credibility)}</strong><small>antes ${Math.round(r.before.credibility)}</small></span>
+                </div>
+                ${r.fx.promise ? '<div class="note warn"><strong>Compromiso público:</strong> prometiste no subir la tasa este trimestre.</div>' : ''}
+                <div class="modal-actions"><button class="btn btn-primary" data-back>Volver al Directorio</button></div>
+              </div>`;
+            modal.querySelector('[data-back]').addEventListener('click', () => {
+                modal.parentElement._close();
+                render();
+                briefingCoach();
+            });
+        }));
     };
 
     // Solo se redibuja lo que depende de la tasa elegida: la respuesta es inmediata.
@@ -248,6 +302,7 @@ export function playScenario(root, scenario, opts) {
             ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}>${moveLabel(v)}<small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
           ${tools}
+          ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre. Puedes romper la promesa, pero te costará credibilidad.</div>' : ''}
           <div class="tradeoff two"><span><strong>Ganan:</strong> ${rateTradeoff(move).win}</span><span><strong>Pierden:</strong> ${rateTradeoff(move).lose}</span></div>
           <div class="decision-actions">
             ${diff.timer ? '<div class="timer-slot"></div>' : ''}
@@ -337,6 +392,7 @@ export function playScenario(root, scenario, opts) {
           ${rec.streak >= 2 ? `<div class="streak-pop">¡${rec.streak} turnos seguidos en la meta!</div>` : ''}
           ${rec.timeout ? '<div class="note warn">Se acabó el tiempo y no hubo decisión: todo siguió como estaba. En una crisis, no decidir también es una decisión.</div>' : ''}
           ${rec.notes.map(n => `<div class="note ${n.tone}">${n.text}</div>`).join('')}
+          ${rec.declaration ? `<div class="declaration"><small>Desde el Congreso · frase real (${rec.declaration.year}, ${rec.declaration.context})</small><p>“${rec.declaration.text}”</p></div>` : ''}
           ${real}
           ${peopleReport(rec.people, rec.regions)}
           <details class="why">

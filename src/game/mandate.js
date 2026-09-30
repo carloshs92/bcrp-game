@@ -1,6 +1,7 @@
 import { createState, step, inBand, neutralRate, PARAMS } from '../model/economy.js';
 import { EVENTS, EVENT_BY_ID, SURPRISES, SURPRISE_BY_ID } from '../model/events.js';
 import { rateMoods, regionMoods } from './people.js';
+import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, pickDeclaration } from '../model/congress.js';
 
 /**
  * Motor por turnos basado en escenarios. Un turno = `stepsPerTurn` pasos mensuales del
@@ -24,6 +25,7 @@ export const FREE_SCENARIO = {
     randomEvents: true,
     intensityGrowth: 0.3,
     surpriseChance: 0.3,
+    citations: true, // el Congreso cita al Directorio cuando está molesto
     reappoint: { minInBand: 9 }
 };
 
@@ -125,6 +127,10 @@ export default class Mandate {
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
         this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio' }];
+        // El Congreso usa su propio azar para no alterar la secuencia de choques (y la calibración).
+        this.crng = mulberry32((seed ^ 0x5bd1e995) >>> 0);
+        this.year = Number(String(scenario.year ?? scenario.startYear ?? 2027).match(/\d{4}(?!.*\d{4})/)?.[0] ?? 2027);
+        this.congress = { lastCitation: -99, promise: null, pending: null, used: new Set(), citations: 0, promisesBroken: 0 };
         this.event = this.drawEvent();
     }
 
@@ -300,6 +306,21 @@ export default class Mandate {
         }
         this.effects = this.effects.map(e => ({ ...e, turnsLeft: e.turnsLeft - 1 })).filter(e => e.turnsLeft > 0);
 
+        // Promesa hecha al Congreso en una citación: romperla cuesta caro.
+        let promiseNote = null;
+        if (this.congress.promise === 'noSubir') {
+            if (move > 0) {
+                s = { ...s, credibility: Math.max(0, s.credibility - 12) };
+                this.pressure += 15;
+                this.congress.promisesBroken += 1;
+                promiseNote = { tone: 'bad', text: 'Rompiste tu promesa al Congreso de no subir la tasa. Los congresistas te acusan de mentir y los mercados dudan de tu palabra.' };
+            } else {
+                s = { ...s, credibility: Math.min(100, s.credibility + 2) };
+                promiseNote = { tone: 'good', text: 'Cumpliste tu palabra ante el Congreso. Una promesa cumplida también es credibilidad.' };
+            }
+            this.congress.promise = null;
+        }
+
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
         let pressure = this.pressure - 4 + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
@@ -322,6 +343,7 @@ export default class Mandate {
             s = { ...s, credibility: Math.max(0, s.credibility - 4) };
             notes.push({ tone: 'bad', text: 'La gente esperaba que actuaras contra la inflación y no lo hiciste.' });
         }
+        if (promiseNote) notes.push(promiseNote);
         if (Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove) this.stats.bigMoves += 1;
         this.pressure = clamp(pressure, 0, 100);
 
@@ -346,6 +368,7 @@ export default class Mandate {
         this.peopleHistory.push(record.people);
         record.regions = regionMoods({ state: s, move, tags: [...(event.tags ?? []), ...(surprise?.tags ?? [])] });
         this.regionHistory.push(record.regions);
+        record.declaration = this.reference ? null : pickDeclaration({ move, pressure: this.pressure, year: this.year, rng: this.crng });
         record.headline = headline({ ...record, surprising: Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove }, this.params);
         this.history.push({ state: s, rate: newRate, pressure: this.pressure, label });
 
@@ -356,8 +379,39 @@ export default class Mandate {
         else if (s.growth <= L.growth) this.gameOver = 'recesion';
 
         this.quarter += 1;
-        if (!this.isOver) this.event = this.drawEvent();
+        if (!this.isOver) {
+            this.event = this.drawEvent();
+            this.maybeCite();
+        }
         return record;
+    }
+
+    /** Si el Congreso está molesto, te cita (como mucho una vez cada 3 turnos). */
+    maybeCite() {
+        const c = this.congress;
+        if (!this.scenario.citations || this.reference || this.pressure < 65 || this.quarter - c.lastCitation < 3) return;
+        const pool = QUESTIONS.filter(q => !c.used.has(q.id) && q.year <= this.year);
+        if (!pool.length) return;
+        const q = pool[Math.floor(this.crng() * pool.length)];
+        c.used.add(q.id);
+        c.lastCitation = this.quarter;
+        c.pending = q;
+    }
+
+    /** Responde la citación pendiente con el estilo de la respuesta `i` (0–2). */
+    answerCitation(i) {
+        const c = this.congress;
+        const q = c.pending;
+        if (!q) return null;
+        const answer = q.answers[i];
+        const fx = ANSWER_EFFECTS[answer.style];
+        const before = { pressure: this.pressure, credibility: this.state.credibility };
+        this.pressure = clamp(this.pressure + fx.pressure, 0, 100);
+        this.state = { ...this.state, credibility: clamp(this.state.credibility + fx.credibility, 0, 100) };
+        c.promise = fx.promise;
+        c.pending = null;
+        c.citations += 1;
+        return { question: q, answer, fx, before, after: { pressure: this.pressure, credibility: this.state.credibility }, followUp: answer.style === 'evasiva' ? FOLLOW_UP : null };
     }
 
     evaluate() {

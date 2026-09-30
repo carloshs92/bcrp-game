@@ -18,7 +18,9 @@ export function fanChart({ history, projection, total, labels }) {
     const y = v => pad.t + (1 - (v - yMin) / (yMax - yMin)) * ih;
 
     const grid = [];
-    for (let v = yMin; v <= yMax; v++) {
+    // Con rangos amplios se etiqueta cada 2 o más puntos para que no se amontonen.
+    const gridStep = Math.max(1, Math.ceil((yMax - yMin) / 8));
+    for (let v = yMin; v <= yMax; v += gridStep) {
         grid.push(`<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>`);
         grid.push(`<text x="${pad.l - 7}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}%</text>`);
     }
