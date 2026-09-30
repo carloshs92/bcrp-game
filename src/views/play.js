@@ -9,12 +9,12 @@ import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
-import { congressMood, BILL_RESPONSES } from '../model/congress.js';
+import { congressMood, BILL_RESPONSES, ANSWER_EFFECTS } from '../model/congress.js';
 import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
-import { icon, KIND_ICON, hawk, dove, bust } from './icons.js';
+import { icon, KIND_ICON, hawk, dove, bust, congressScene } from './icons.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -89,7 +89,7 @@ export function avatar(who) {
 function eventCard(e) {
     const c = CHARACTERS[e.who] ?? CHARACTERS.analista;
     const ask = e.asks === 'bajar'
-        ? `<span class="pill warn">Pide bajar la tasa</span><span class="ask-hint">Si la subes: +${Math.round(e.pressure * 1.5)} de presión</span>`
+        ? `<span class="pill warn">Pide bajar la tasa</span><span class="ask-hint">Si la subes: +${Math.round(e.pressure * CONGRESS.askWeight)} de presión</span>`
         : e.asks === 'subir'
             ? '<span class="pill bad">Pide actuar contra la inflación</span><span class="ask-hint">Si no subes con inflación alta: −credibilidad</span>'
             : '';
@@ -178,6 +178,26 @@ function fxTradeoff(sell) {
     if (sell > 0) return { win: 'Quienes deben en dólares y quienes compran importados.', lose: 'Las reservas: quedan menos para la próxima crisis.', winWho: ['deudoresUsd', 'importadores'], loseWho: ['reservas'] };
     if (sell < 0) return { win: 'Exportadores y el colchón de reservas.', lose: 'Quienes deben en dólares: el dólar sube un poco más.', winWho: ['exportadores', 'reservas'], loseWho: ['deudoresUsd'] };
     return { win: 'Nadie en particular: el mercado decide.', lose: 'Si hay presión, el dólar se mueve sin freno.', winWho: [], loseWho: [] };
+}
+
+/** Recuadro de resultado tras el Congreso: ícono, valor nuevo y cuánto cambió. */
+function congressDelta(ico, label, before, after, goodWhenUp) {
+    const d = Math.round(after) - Math.round(before);
+    const tone = d === 0 ? '' : (d > 0) === goodWhenUp ? 'good' : 'bad';
+    return `<span class="delta cdelta ${tone}"><span class="cd-ico">${icon(ico, { size: 18 })}</span><span>${label}<strong class="num">${Math.round(after)}${d ? ` <em>${d > 0 ? '+' : ''}${d}</em>` : ''}</strong><small>antes ${Math.round(before)}</small></span></span>`;
+}
+
+/** Ícono del tema de cada proyecto de ley. */
+const BILL_ICON = { 'retiro-afp': 'piggy', 'topes-tasas': 'percent', 'oro-bcr': 'gold', 'usar-reservas': 'vault' };
+
+/** Etiqueta "hecho real" que despliega la fuente del episodio (menos texto a la vista). */
+const realChip = (label, detail) => `
+    <details class="real-chip"><summary>${icon('pin', { size: 13 })}${label}</summary><p>${detail}</p></details>`;
+
+/** Pistas (modo fácil) como fichas con ícono: qué pasa con el Congreso y la credibilidad. */
+function effectChips({ pressure = 0, credibility = 0, extra = '' }) {
+    const chip = (ico, label, v, goodWhenUp) => v ? `<span class="fx-chip ${(v > 0) === goodWhenUp ? 'good' : 'bad'}">${icon(ico, { size: 13 })}${label} ${v > 0 ? '▲' : '▼'}</span>` : '';
+    return `<span class="fx-chips">${chip('congress', 'Enojo', pressure, false)}${chip('handshake', 'Credibilidad', credibility, true)}${extra ? `<span class="fx-chip warn">${extra}</span>` : ''}</span>`;
 }
 
 /** Grupos del cuadro "quién gana y quién pierde": ícono y nombre corto. */
@@ -297,23 +317,26 @@ export function playScenario(root, scenario, opts) {
 
     const showBill = () => {
         const b = m.congress.pendingBill;
-        const hints = ['El Congreso se molesta más, pero la gente confía en el BCR', 'Calma al Congreso, pero el proyecto pasa a medias', 'No te peleas con nadie, pero el proyecto pasa completo'];
+        const icons = ['megaphone', 'handshake', 'mute'];
         music.setMood('surprise');
         music.sting();
         const modal = openModal(`
           <div class="citation bill">
-            <div class="breaking-tag">PROYECTO DE LEY</div>
-            <h2>${b.title}</h2>
-            <div class="question">
-              <small>Basado en un hecho real (${b.year}): ${b.basis}</small>
-              <p>${b.text}</p>
+            <div class="cite-hero">
+              ${congressScene(BILL_ICON[b.id] ?? 'scroll', { angry: m.pressure >= CONGRESS.insistAt })}
+              <div>
+                <div class="breaking-tag">PROYECTO DE LEY</div>
+                <h2>${b.title.replace(/^Proyecto de ley: (.)/, (_, c) => c.toUpperCase())}</h2>
+                ${realChip(`Hecho real · ${b.year}`, b.basis)}
+              </div>
             </div>
-            <p class="lead">El BCR no vota las leyes, pero su opinión pesa. ¿Qué hace el Directorio?</p>
+            <p class="bill-text">${b.text}</p>
+            <p class="cite-ask">${icon('gavel', { size: 16 })}El BCR no vota las leyes, pero su opinión pesa. ¿Qué haces?</p>
             <div class="answers">${BILL_RESPONSES.map((r, i) => `
               <button class="answer" data-bill="${i}">
-                <strong>${r.label}</strong>
-                <span>${r.text}</span>
-                ${diff.hints ? `<small>${hints[i]}</small>` : ''}
+                <span class="ans-ico ${r.style}">${icon(icons[i], { size: 22 })}</span>
+                <span class="ans-body"><strong>${r.label}</strong><span>${r.text}</span>
+                ${diff.hints ? effectChips({ pressure: r.pressure, credibility: r.credibility, extra: ['', 'El proyecto pasa a medias', 'El proyecto pasa completo'][i] }) : ''}</span>
               </button>`).join('')}
             </div>
           </div>`, { dismissible: false, wide: true });
@@ -326,12 +349,15 @@ export function playScenario(root, scenario, opts) {
                         : 'El proyecto se aprobó tal cual.';
             modal.innerHTML = `
               <div class="citation">
-                <div class="eyebrow">Resultado de la votación</div>
-                <h2>${r.passed ? 'Aprobado' : 'Archivado'}</h2>
+                <div class="cite-hero result">
+                  <span class="verdict-stamp ${r.passed ? 'bad' : 'good'}">${icon(r.passed ? 'gavel' : 'scroll', { size: 30 })}</span>
+                  <div><div class="eyebrow">Resultado de la votación</div><h2>${r.passed ? 'Aprobado' : 'Archivado'}</h2></div>
+                  <span class="cite-face">${face(congressMood(r.after.pressure).mood, 52)}<small>${congressMood(r.after.pressure).label}</small></span>
+                </div>
                 <p class="lead">${outcome}</p>
                 <div class="deltas two">
-                  <span class="delta">Enojo del Congreso <strong class="num">${Math.round(r.after.pressure)}</strong><small>antes ${Math.round(r.before.pressure)}</small></span>
-                  <span class="delta">Credibilidad <strong class="num">${Math.round(r.after.credibility)}</strong><small>antes ${Math.round(r.before.credibility)}</small></span>
+                  ${congressDelta('congress', 'Enojo del Congreso', r.before.pressure, r.after.pressure, false)}
+                  ${congressDelta('handshake', 'Credibilidad', r.before.credibility, r.after.credibility, true)}
                 </div>
                 ${r.passed && r.bill.effects.shock?.demand ? `<div class="note warn">Efecto en la economía: ${r.bill.effects.shock.demand > 0 ? 'más gasto y más presión sobre los precios' : 'menos crédito y menos gasto'} en ${r.bill.effects.turns === 1 ? 'el próximo trimestre' : `los próximos ${r.bill.effects.turns} trimestres`}. Tenlo en cuenta al decidir la tasa.</div>` : ''}
                 ${r.passed && r.bill.effects.reserves && r.after.reserves != null ? `<div class="note bad">Las reservas bajan a US$ ${r.after.reserves.toFixed(1)} mil millones.</div>` : ''}
@@ -348,24 +374,27 @@ export function playScenario(root, scenario, opts) {
     const showCitation = () => {
         const q = m.congress.pending;
         const labels = { tecnica: 'Responder con el mandato', promesa: 'Calmar con una promesa', evasiva: 'Salir por la tangente' };
-        const hints = { tecnica: '+ credibilidad · el Congreso se molesta más', promesa: 'calma al Congreso · te compromete a no subir la tasa', evasiva: 'no compromete · − credibilidad' };
+        const icons = { tecnica: 'scroll', promesa: 'handshake', evasiva: 'shuffle' };
+        const effects = { tecnica: { extra: '' }, promesa: { extra: 'Te comprometes a no subir la tasa' }, evasiva: { extra: '' } };
         music.setMood('surprise');
         music.sting();
         const modal = openModal(`
           <div class="citation">
-            <div class="breaking-tag">CITACIÓN</div>
-            <h2>El Congreso cita al Directorio del BCR</h2>
-            <p class="lead">${m.pressure >= 65 ? 'Estás molestando a los congresistas y te piden explicaciones.' : 'El Congreso debate un tema urgente y quiere escuchar al BCR.'} Responde con cuidado: lo que digas aquí también lo escuchan los mercados.</p>
-            <div class="question">
-              <small>${q.kind === 'recreacion' ? `Recreación basada en un hecho real (${q.year}): ${q.basis}` : `Pregunta real hecha en el Congreso (${q.year}, ${q.context})`}</small>
-              <p>“${q.text}”</p>
-              ${q.note ? `<span class="q-note">Dato: ${q.note}</span>` : ''}
+            <div class="cite-hero">
+              <span class="cite-bust">${bust('congreso', CHARACTERS.congreso.color, 84)}</span>
+              <div>
+                <div class="breaking-tag">CITACIÓN</div>
+                <h2>El Congreso cita al Directorio del BCR</h2>
+                ${q.kind === 'recreacion' ? realChip(`Recreación de un hecho real · ${q.year}`, q.basis) : realChip(`Pregunta real · ${q.year}`, `Hecha en el Congreso (${q.context}). Se muestra sin el nombre del congresista.`)}
+              </div>
             </div>
+            <blockquote class="bubble cite-q">“${q.text}”${q.note ? `<span class="q-note">${icon('pin', { size: 13 })}${q.note}</span>` : ''}</blockquote>
+            <p class="cite-ask">${icon('megaphone', { size: 16 })}${m.pressure >= CONGRESS.citeAt + 10 ? 'Están furiosos contigo.' : 'Quieren escuchar al BCR.'} Lo que digas también lo oyen los mercados.</p>
             <div class="answers">${q.answers.map((a, i) => `
               <button class="answer" data-answer="${i}">
-                <strong>${labels[a.style]}</strong>
-                <span>“${a.text}”</span>
-                ${diff.hints ? `<small>${hints[a.style]}</small>` : ''}
+                <span class="ans-ico ${a.style}">${icon(icons[a.style], { size: 22 })}</span>
+                <span class="ans-body"><strong>${labels[a.style]}</strong><span>“${a.text}”</span>
+                ${diff.hints ? effectChips({ ...ANSWER_EFFECTS[a.style], ...effects[a.style] }) : ''}</span>
               </button>`).join('')}
             </div>
           </div>`, { dismissible: false, wide: true });
@@ -374,13 +403,15 @@ export function playScenario(root, scenario, opts) {
             music.setMood(r.fx.pressure < 0 ? 'good' : 'bad');
             modal.innerHTML = `
               <div class="citation">
-                <div class="eyebrow">Después de la sesión</div>
-                <h2>${r.fx.pressure < 0 ? 'El Congreso baja el tono' : 'El Congreso sale más molesto'}</h2>
+                <div class="cite-hero result">
+                  <span class="cite-face">${face(congressMood(r.after.pressure).mood, 64)}<small>${congressMood(r.after.pressure).label}</small></span>
+                  <div><div class="eyebrow">Después de la sesión</div><h2>${r.fx.pressure < 0 ? 'El Congreso baja el tono' : 'El Congreso sale más molesto'}</h2></div>
+                </div>
                 <p class="lead">${r.fx.result}</p>
                 ${r.followUp ? `<div class="question"><small>Réplica real (${r.followUp.year}, ${r.followUp.context})</small><p>“${r.followUp.text}”</p></div>` : ''}
                 <div class="deltas two">
-                  <span class="delta">Enojo del Congreso <strong class="num">${Math.round(r.after.pressure)}</strong><small>antes ${Math.round(r.before.pressure)}</small></span>
-                  <span class="delta">Credibilidad <strong class="num">${Math.round(r.after.credibility)}</strong><small>antes ${Math.round(r.before.credibility)}</small></span>
+                  ${congressDelta('congress', 'Enojo del Congreso', r.before.pressure, r.after.pressure, false)}
+                  ${congressDelta('handshake', 'Credibilidad', r.before.credibility, r.after.credibility, true)}
                 </div>
                 ${r.fx.promise ? '<div class="note warn"><strong>Compromiso público:</strong> prometiste no subir la tasa este trimestre.</div>' : ''}
                 <div class="modal-actions"><button class="btn btn-primary" data-back>Volver al Directorio</button></div>
@@ -413,7 +444,7 @@ export function playScenario(root, scenario, opts) {
         root.querySelector('.fan').innerHTML = fanChart({ history: m.history, projection: proj, total: m.turns, labels: m.labels().map(shortLabel) });
 
         const hikeCost = scenario.hikePressure ?? 4;
-        const pressHint = move > 0 ? ` · presión +${Math.round(move / 0.25 * hikeCost)}${m.event.asks === 'bajar' ? ` (+${Math.round(m.event.pressure * 1.5)} por ignorar el pedido)` : ''}` : '';
+        const pressHint = move > 0 ? ` · presión +${Math.round(move / 0.25 * hikeCost)}${m.event.asks === 'bajar' ? ` (+${Math.round(m.event.pressure * CONGRESS.askWeight)} por ignorar el pedido)` : ''}` : '';
         const tools = m.tools.map(t => `
           <div class="tool">
             <div><strong>${t.name}</strong><small>${t.desc}</small></div>

@@ -44,6 +44,13 @@ const PATHS = {
     ship: '<path d="M2 20c2 1.3 4 1.3 6 0 2 1.3 4 1.3 6 0 2 1.3 4 1.3 6 0"/><path d="M4 17 3 12h18l-2 5"/><path d="M6 12V7h8v5M9 7V4"/>',
     vault: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="12" cy="12" r="4"/><path d="M12 8v1.5M12 14.5V16M8 12h1.5M14.5 12H16M3 20v1.5M21 20v1.5"/>',
     box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/>',
+    // Congreso: proyectos y respuestas
+    gold: '<path d="M3 20l2.5-6h13L21 20z"/><path d="M7 14l2-5h6l2 5"/><path d="M10.5 9l1-3h1l1 3"/>',
+    percent: '<path d="M19 5 5 19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/>',
+    mute: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/><path d="M9 9l6 6M15 9l-6 6"/>',
+    scroll: '<path d="M8 21h11a2 2 0 0 0 2-2v-1H10v1a2 2 0 0 1-4 0V5a2 2 0 0 0-2-2h13a2 2 0 0 1 2 2v13"/><path d="M10 8h6M10 12h6"/>',
+    shuffle: '<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
+    pin: '<path d="M12 17v5"/><path d="M9 10.8V4h6v6.8l3 3.2H6z"/>',
     // 1990
     printer: '<path d="M6 9V2h12v7"/><rect x="2" y="9" width="20" height="9" rx="2"/><path d="M6 14h12v8H6z"/>',
     scale: '<path d="M12 3v18M5 21h14M4 7h16"/><path d="m4 7-3 7a4 4 0 0 0 6 0zM20 7l-3 7a4 4 0 0 0 6 0z"/>',
@@ -139,4 +146,23 @@ export function bust(who, color, size = 48) {
         ${extra}
       </g>
     </svg>`;
+}
+
+/**
+ * Escena del Congreso para los modales: hemiciclo con curules y, al frente, el tema en discusión.
+ * `mood` colorea el fondo: más rojo cuanto más molesto.
+ */
+export function congressScene(topic, { angry = false } = {}) {
+    const seats = [];
+    [[30, 9], [22, 7], [14, 5]].forEach(([r, n], row) => {
+        for (let i = 0; i < n; i++) {
+            const a = Math.PI * (i + 0.5) / n;
+            seats.push(`<circle cx="${(48 - Math.cos(a) * r * 1.35).toFixed(1)}" cy="${(46 - Math.sin(a) * r).toFixed(1)}" r="${3.2 - row * 0.4}" fill="${(i + row) % 3 === 0 ? '#f2b705' : '#fff'}" opacity=".9"/>`);
+        }
+    });
+    return `
+    <div class="congress-scene${angry ? ' angry' : ''}" aria-hidden="true">
+      <svg viewBox="0 0 96 56" class="hemi">${seats.join('')}<rect x="40" y="46" width="16" height="7" rx="1.5" fill="#fff" opacity=".85"/></svg>
+      <span class="scene-topic">${icon(topic, { size: 30 })}</span>
+    </div>`;
 }

@@ -721,11 +721,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .event-head .pill { display: inline-flex; align-items: center; gap: 5px; }
 .avatar { width: 56px; height: 56px; background: none; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--c, var(--line)); overflow: hidden; }
 .avatar .bust { width: 100%; height: 100%; display: block; }
-.event blockquote.bubble, .voice.bubble {
+.event blockquote.bubble, .voice.bubble, .cite-q.bubble {
     position: relative; font-style: normal; background: var(--surface-2); border: 1px solid var(--line);
     border-radius: 14px; padding: 10px 14px; margin: 4px 0 0 8px;
 }
-.event blockquote.bubble::before, .voice.bubble::before {
+.event blockquote.bubble::before, .voice.bubble::before, .cite-q.bubble::before {
     content: ''; position: absolute; left: 18px; top: -8px; width: 14px; height: 14px; background: var(--surface-2);
     border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg);
 }
@@ -813,3 +813,69 @@ button { font: inherit; color: inherit; cursor: pointer; }
     .tt-chip small { display: none; }
     .tt-chip { padding: 4px; }
 }
+
+/* Modales del Congreso: escena, fichas de "hecho real" y respuestas con ícono. */
+.cite-hero { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
+.cite-hero h2 { margin: 6px 0 6px; line-height: 1.15; }
+.cite-hero .breaking-tag { display: inline-block; }
+.cite-bust { flex: none; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 0 6px #7a2e8e; animation: grumble 2.4s ease-in-out infinite; }
+.cite-bust .bust { display: block; }
+@keyframes grumble { 0%, 80%, 100% { transform: rotate(0); } 85% { transform: rotate(-4deg); } 90% { transform: rotate(4deg); } 95% { transform: rotate(-2deg); } }
+.congress-scene { flex: none; position: relative; width: 132px; height: 96px; border-radius: 14px; background: linear-gradient(160deg, #7a2e8e, #4d1d5c); display: grid; place-items: end center; overflow: hidden; }
+.congress-scene.angry { background: linear-gradient(160deg, #b8202f, #6d1019); }
+.congress-scene .hemi { width: 118px; margin-bottom: 4px; }
+.scene-topic { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); width: 46px; height: 46px; border-radius: 12px; background: #fff; color: #7a2e8e; display: grid; place-items: center; box-shadow: 0 4px 12px rgba(0, 0, 0, .25); animation: pop .5s ease; }
+.congress-scene.angry .scene-topic { color: var(--red); }
+
+.real-chip { font-size: 12.5px; color: var(--muted); }
+.real-chip summary { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; list-style: none; font-weight: 700; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+.real-chip summary::-webkit-details-marker { display: none; }
+.real-chip summary::after { content: '▾'; font-size: 10px; }
+.real-chip[open] summary::after { content: '▴'; }
+.real-chip p { margin: 6px 0 0; max-width: 560px; }
+
+.bill-text { font-size: 16px; color: var(--ink); margin: 0 0 12px; }
+.cite-q { font-size: 17px; margin: 0 0 12px 12px !important; font-style: italic; }
+.cite-q.bubble::before { left: 40px; }
+.cite-q .q-note { display: flex; align-items: center; gap: 4px; }
+.cite-ask { display: flex; align-items: center; gap: 8px; font-weight: 600; color: var(--ink-2); margin: 0 0 10px; }
+.cite-ask .ico { color: var(--red); }
+
+.answer { grid-template-columns: auto 1fr; align-items: start; column-gap: 12px; }
+.ans-body { display: grid; gap: 4px; }
+.ans-ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--info-bg); color: var(--navy-2); transition: transform .2s; }
+.ans-ico.oponerse, .ans-ico.tecnica { background: var(--bad-bg); color: var(--red); }
+.ans-ico.negociar, .ans-ico.promesa { background: #f1e9fb; color: #6b3fa0; }
+.ans-ico.callar, .ans-ico.evasiva { background: var(--surface-2); color: var(--muted); }
+.answer:hover .ans-ico { transform: rotate(-8deg) scale(1.08); }
+.fx-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.fx-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 2px 8px; }
+.fx-chip.good { background: var(--good-bg); color: var(--good); }
+.fx-chip.bad { background: var(--bad-bg); color: var(--bad); }
+.fx-chip.warn { background: var(--warn-bg); color: var(--warn); }
+
+.cite-hero.result { justify-content: flex-start; }
+.cite-face { display: grid; justify-items: center; gap: 2px; margin-left: auto; }
+.cite-hero.result .cite-face:first-child { margin-left: 0; }
+.cite-face small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.verdict-stamp { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; border: 3px solid currentColor; transform: rotate(-10deg); animation: pop .4s ease; }
+.verdict-stamp.bad { color: var(--red); background: var(--bad-bg); }
+.verdict-stamp.good { color: var(--good); background: var(--good-bg); }
+
+@media (max-width: 640px) {
+    .cite-hero { gap: 10px; align-items: flex-start; }
+    .congress-scene { width: 84px; height: 70px; }
+    .congress-scene .hemi { width: 78px; }
+    .scene-topic { width: 34px; height: 34px; top: 6px; }
+    .scene-topic .ico { width: 20px; height: 20px; }
+    .cite-bust .bust { width: 60px; height: 60px; }
+    .ans-ico { width: 34px; height: 34px; }
+}
+.cdelta { display: flex !important; align-items: center; gap: 10px; }
+.cdelta > span:last-child { display: grid; }
+.cd-ico { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--info-bg); color: var(--navy-2); flex: none; }
+.cdelta.good .cd-ico { background: var(--good-bg); color: var(--good); }
+.cdelta.bad .cd-ico { background: var(--bad-bg); color: var(--bad); }
+.cdelta em { font-style: normal; font-size: 14px; }
+.cdelta.good em { color: var(--good); }
+.cdelta.bad em { color: var(--bad); }
