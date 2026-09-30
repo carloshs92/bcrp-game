@@ -7,14 +7,15 @@ import { CHAPTERS, TUTORIAL, INTERLUDES } from '../src/model/history.js';
 const SEEDS = 100;
 
 // Tasa de éxito de una estrategia (turno → tasa) sobre muchas semillas; `tool` usa Reactiva en el turno 1.
-function winRate(scenario, strategy, { tool = false } = {}) {
+function winRate(scenario, strategy, { tool = false, fx = () => 0 } = {}) {
     let won = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
         const m = new Mandate(seed, scenario);
         let i = 0;
         while (!m.isOver) {
             if (tool && i === 1) m.tools.forEach(t => m.useTool(t.id));
-            m.decide(strategy(m, i++));
+            m.decide(strategy(m, i), fx(m, i));
+            i++;
         }
         if (m.evaluate().passed) won++;
     }
@@ -32,7 +33,7 @@ for (const ch of rateChapters) {
     });
 
     test(`${ch.id}: replicar al BCRP real gana casi siempre`, () => {
-        const r = winRate(ch, (m, i) => ch.realPath.rate[i], { tool: true });
+        const r = winRate(ch, (m, i) => ch.realPath.rate[i], { tool: true, fx: (m, i) => ch.realPath.fxSales?.[i] ?? 0 });
         assert.ok(r >= 0.8, `real=${r}`);
     });
 
@@ -89,7 +90,8 @@ test('puntaje: copiar al BCRP real da exactamente 100% (mismos imprevistos)', ()
             let i = 0;
             while (!m.isOver) {
                 if (i === 1) m.tools.forEach(t => m.useTool(t.id));
-                m.decide(ch.realPath.rate[i++]);
+                m.decide(ch.realPath.rate[i], ch.realPath.fxSales?.[i] ?? 0);
+                i++;
             }
             const r = m.evaluate();
             if (r.survived) assert.equal(r.score, 100, `${ch.id} seed ${seed}`);
@@ -113,4 +115,25 @@ test('gente 1990: el Comité de Caja golpea a los estatales; imprimir, a los aho
     const get = (ps, id) => ps.find(p => p.id === id).mood;
     assert.ok(get(caja, 'estatales') < get(imprimir, 'estatales'));
     assert.ok(get(caja, 'ahorristas') > get(imprimir, 'ahorristas'));
+});
+
+test('dólar: replicar al BCRP reproduce el tipo de cambio real (±3%)', () => {
+    for (const ch of rateChapters.filter(c => c.fx)) {
+        const m = new Mandate(1, { ...ch, surpriseChance: 0 });
+        let i = 0;
+        while (!m.isOver) { m.decide(ch.realPath.rate[i], ch.realPath.fxSales[i]); i++; }
+        m.history.slice(1).forEach((h, k) => {
+            const err = Math.abs(h.fx / ch.realPath.fxRate[k] - 1);
+            assert.ok(err < 0.03, `${ch.id} ${ch.labels[k]}: ${h.fx.toFixed(3)} vs ${ch.realPath.fxRate[k]}`);
+        });
+    }
+});
+
+test('dólar: vender reservas frena la depreciación y no se puede bajar del piso', () => {
+    const ch = CHAPTERS.find(c => c.id === 'crisis-2008');
+    const run = sell => { const m = new Mandate(1, { ...ch, surpriseChance: 0 }); for (let i = 0; i < 4; i++) m.decide(m.state.rate, i === 3 ? sell : 0); return m; };
+    assert.ok(run(3).fx.rate < run(0).fx.rate);
+    const m = new Mandate(1, ch);
+    while (!m.isOver) m.decide(m.state.rate, 3);
+    assert.ok(m.fx.reserves >= 0.3 * m.fx.initialReserves - 1e-9);
 });

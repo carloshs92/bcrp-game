@@ -1,4 +1,4 @@
-import Mandate from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -7,7 +7,7 @@ import { openModal, modalOpen, closeModal } from './modal.js';
 import { openGlossary } from './glossary.js';
 import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
-import { getSettings, DIFFICULTIES } from '../storage.js';
+import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
 import { congressMood } from '../model/congress.js';
 import { face } from './people.js';
@@ -69,7 +69,13 @@ function meters(m) {
             pos: m.pressure / 100, danger: [0.8, 1],
             tone: m.pressure < 50 ? 'good' : m.pressure < 80 ? 'warn' : 'bad',
             sub: `Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ' · te cita desde 65' : ''} · pierdes en 100`
-        })
+        }),
+        ...(m.fx ? [meter({
+            id: 'm-fx', label: 'Dólar', term: 'intervencion', display: `S/ ${m.fx.rate.toFixed(3)}`,
+            pos: m.fx.reserves / (m.fx.initialReserves * 1.3), danger: [0, 0.3 / 1.3],
+            tone: Math.abs(m.fx.lastDep) < 2 && m.fx.reserves > 0.5 * m.fx.initialReserves ? 'good' : Math.abs(m.fx.lastDep) < 4 ? 'warn' : 'bad',
+            sub: `Reservas US$ ${m.fx.reserves.toFixed(1)} mil M${m.fx.lastDep ? ` · ${m.fx.lastDep > 0 ? '▲' : '▼'} ${Math.abs(m.fx.lastDep).toFixed(1)}% el trimestre` : ''}`
+        })] : [])
     ].join('');
 }
 
@@ -133,6 +139,44 @@ export async function announceSuspense(text) {
     overlay.remove();
 }
 
+const FX_LABEL = { 3: 'Vender 3', 1.5: 'Vender 1.5', 0: 'No intervenir', '-1.5': 'Comprar 1.5', '-3': 'Comprar 3' };
+
+/** Bloque del mercado cambiario en la tarjeta de decisión. */
+function fxBlock(m, move, sell, diff) {
+    const pressure = m.fxPressure();
+    const dep = expectedDepreciation(pressure, move, sell);
+    const newRate = m.fx.rate * (1 + dep / 100);
+    const reserves = m.fx.reserves - sell;
+    const max = m.maxSale();
+    const tone = diff.hints ? (Math.abs(dep) < 2 ? 'txt-good' : 'txt-bad') : '';
+    return `
+      <div class="fx-block">
+        <div class="fx-head"><strong>Mercado cambiario ${help('intervencion')}</strong>
+          <span>Presión sobre el dólar este trimestre: <strong class="num">${pressure > 0 ? '+' : ''}${pressure.toFixed(1)}%</strong></span></div>
+        <div class="steps" style="grid-template-columns:repeat(${FX_MOVES.length},1fr)" role="radiogroup" aria-label="Intervención cambiaria">
+          ${FX_MOVES.map(v => `<button role="radio" aria-checked="${v === sell}" class="${v === sell ? 'on' : ''}" data-sell="${v}" ${v > max + 1e-9 ? 'disabled' : ''}>${FX_LABEL[v]}<small>${v === 0 ? 'US$' : 'mil M US$'}</small></button>`).join('')}
+        </div>
+        <div class="fx-out">Dólar esperado: <strong class="num ${tone}">S/ ${newRate.toFixed(3)}</strong> (${dep >= 0 ? '+' : ''}${dep.toFixed(1)}%) · reservas quedarían en <strong class="num">US$ ${reserves.toFixed(1)} mil M</strong></div>
+      </div>`;
+}
+
+/** Quién gana y quién pierde con la intervención cambiaria. */
+function fxTradeoff(sell) {
+    if (sell > 0) return { win: 'Quienes deben en dólares y quienes compran importados.', lose: 'Las reservas: quedan menos para la próxima crisis.' };
+    if (sell < 0) return { win: 'Exportadores y el colchón de reservas.', lose: 'Quienes deben en dólares: el dólar sube un poco más.' };
+    return { win: 'Nadie en particular: el mercado decide.', lose: 'Si hay presión, el dólar se mueve sin freno.' };
+}
+
+/** Un solo cuadro de "quién gana y quién pierde": una fila por decisión. */
+function tradeoffTable(move, sell, withFx) {
+    const rows = [['Tasa', rateTradeoff(move)], ...(withFx ? [['Dólares', fxTradeoff(sell)]] : [])];
+    return `
+      <div class="tradeoff-table" role="table" aria-label="Quién gana y quién pierde">
+        <div class="tt-head" role="row"><span></span><span>Ganan</span><span>Pierden</span></div>
+        ${rows.map(([k, t]) => `<div class="tt-row" role="row"><strong>${k}</strong><span>${t.win}</span><span>${t.lose}</span></div>`).join('')}
+      </div>`;
+}
+
 /**
  * Juega un escenario (tutorial, capítulo o modo libre).
  * opts: { mode: 'libre' | 'capitulo' | 'tutorial', title, tips, coachSteps, onExit, onFinish(m, result) }
@@ -142,14 +186,19 @@ export function playScenario(root, scenario, opts) {
     // El tutorial siempre va en fácil y sin reloj.
     const diff = opts.difficulty ? { difficulty: opts.difficulty, ...DIFFICULTIES[opts.difficulty] } : getSettings();
     let move = 0;
+    let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
     let lastRegions = null;
-    const timer = createTimer(diff.timer, () => { move = 0; announce({ timeout: true }); }, () => busy);
+    const timer = createTimer(diff.timer, () => { move = 0; sell = 0; announce({ timeout: true }); }, () => busy);
 
     const onKey = e => {
         if (modalOpen() || busy) return;
-        if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        if (m.fx && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            const i = FX_MOVES.indexOf(sell) + (e.key === 'ArrowDown' ? 1 : -1);
+            if (i >= 0 && i < FX_MOVES.length && FX_MOVES[i] <= m.maxSale() + 1e-9) { sell = FX_MOVES[i]; updateDecision(); }
+            e.preventDefault();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
             const i = m.moves.indexOf(move) + (e.key === 'ArrowRight' ? 1 : -1);
             if (i >= 0 && i < m.moves.length) { move = m.moves[i]; updateDecision(); }
             e.preventDefault();
@@ -177,7 +226,7 @@ export function playScenario(root, scenario, opts) {
         </header>
         <div class="andean-strip">${andeanBand}</div>
         <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
-          <div class="meters">${meters(m)}</div>
+          <div class="meters${m.fx ? ' five' : ''}">${meters(m)}</div>
           <div class="mandate-grid">
             <div class="col">
               ${tip ? `<div class="tip"><strong>Consejo:</strong> ${tip}</div>` : ''}
@@ -270,7 +319,7 @@ export function playScenario(root, scenario, opts) {
         const s = m.state;
         const rate = Math.max(m.minRate, s.rate + move);
         const adv = m.advisors();
-        const proj = m.projection(rate);
+        const proj = m.projection(rate, sell);
         const end = proj.at(-1);
         const endOk = inBand(end.inflation);
 
@@ -301,17 +350,20 @@ export function playScenario(root, scenario, opts) {
           <div class="steps" style="grid-template-columns:repeat(${m.moves.length},1fr)" role="radiogroup" aria-label="Cambio de tasa">
             ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}>${moveLabel(v)}<small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
+          ${m.fx ? fxBlock(m, move, sell, diff) : ''}
           ${tools}
           ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre. Puedes romper la promesa, pero te costará credibilidad.</div>' : ''}
-          <div class="tradeoff two"><span><strong>Ganan:</strong> ${rateTradeoff(move).win}</span><span><strong>Pierden:</strong> ${rateTradeoff(move).lose}</span></div>
+          ${tradeoffTable(move, sell, !!m.fx)}
           <div class="decision-actions">
             ${diff.timer ? '<div class="timer-slot"></div>' : ''}
             <span class="press-hint">${diff.hints ? (endOk ? 'La proyección termina dentro de la meta.' : 'La proyección termina fuera de la meta.') : ''}${pressHint}${rate <= m.minRate + 1e-9 ? ' · La tasa ya está en su piso (0.25%).' : ''}</span>
             <button class="btn btn-primary" data-announce>Anunciar decisión <span class="kbd">Enter</span></button>
           </div>`;
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
+        el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
+        el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
         el.querySelector('[data-announce]').addEventListener('click', announce);
-        el.querySelector('[data-term]').addEventListener('click', () => openGlossary('tasa'));
+        el.querySelector('[data-term="tasa"]').addEventListener('click', () => openGlossary('tasa'));
         el.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
             if (m.useTool(b.dataset.tool)) { music.sting(); render(); }
         }));
@@ -327,8 +379,10 @@ export function playScenario(root, scenario, opts) {
         const d = rate - s.rate;
         await announceSuspense(timeout ? `Se acabó el tiempo. El Directorio no llegó a un acuerdo: la tasa se mantiene en ${pct(rate, 2)}…`
             : d === 0 ? `El Directorio acordó mantener la tasa de referencia en ${pct(rate, 2)}…`
-            : `El Directorio acordó ${d > 0 ? 'elevar' : 'reducir'} la tasa de referencia a ${pct(rate, 2)}…`);
-        const rec = m.decide(rate);
+            : `El Directorio acordó ${d > 0 ? 'elevar' : 'reducir'} la tasa de referencia a ${pct(rate, 2)}…`
+            + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : ''));
+        const rec = m.decide(rate, sell);
+        sell = 0;
         rec.timeout = timeout;
         lastPeople = rec.people;
         lastRegions = rec.regions;
@@ -387,7 +441,9 @@ export function playScenario(root, scenario, opts) {
             ${chip('Inflación', rec.prev.inflation, rec.state.inflation, v => pct(v), rec.state.inflation < PARAMS.target)}
             ${chip('PBI', rec.prev.growth, rec.state.growth, v => pct(v), true)}
             ${chip('Credibilidad', rec.prev.credibility, rec.state.credibility, v => `${Math.round(v)}`, true)}
-            ${chip('Presión', rec.prevPressure, rec.pressure, v => `${Math.round(v)}`, false)}
+            ${chip('Congreso', rec.prevPressure, rec.pressure, v => `${Math.round(v)}`, false)}
+            ${rec.fx ? chip('Dólar', rec.fx.before.rate, rec.fx.rate, v => `S/ ${v.toFixed(3)}`, false) : ''}
+            ${rec.fx ? chip('Reservas', rec.fx.before.reserves, rec.fx.reserves, v => `US$ ${v.toFixed(1)} mil M`, true) : ''}
           </div>
           ${rec.streak >= 2 ? `<div class="streak-pop">¡${rec.streak} turnos seguidos en la meta!</div>` : ''}
           ${rec.timeout ? '<div class="note warn">Se acabó el tiempo y no hubo decisión: todo siguió como estaba. En una crisis, no decidir también es una decisión.</div>' : ''}
@@ -424,7 +480,22 @@ export function playScenario(root, scenario, opts) {
     };
 
     render();
-    briefingCoach();
+    if (m.fx && !getFlag('fxIntro')) {
+        setFlag('fxIntro');
+        openModal(`
+          <div class="eyebrow">Nueva herramienta</div>
+          <h2>El mercado cambiario</h2>
+          <p class="lead">Además de la tasa, ahora puedes <strong>vender o comprar dólares</strong> para suavizar los movimientos del tipo de cambio, como hace el BCR de verdad.</p>
+          <ul class="goals">
+            <li><span class="mark">1</span><span>Si el dólar sube, <strong>lo importado se encarece</strong> (combustible, trigo, repuestos) y sube la inflación.</span></li>
+            <li><span class="mark">2</span><span>Muchas familias y empresas <strong>deben en dólares</strong> pero ganan en soles: cuando el dólar sube, sus deudas crecen.</span></li>
+            <li><span class="mark">3</span><span>Vender dólares frena el alza, pero gasta <strong>reservas internacionales</strong>. Si bajan demasiado, los mercados dejan de confiar.</span></li>
+            <li><span class="mark">4</span><span>La Fed, las guerras, el cobre y la política interna mueven el dólar. Subir la tasa también ayuda a fortalecer el sol.</span></li>
+          </ul>
+          <div class="modal-actions"><button class="btn btn-primary" data-close>Entendido</button></div>`, { onClose: briefingCoach });
+    } else {
+        briefingCoach();
+    }
     return m;
 }
 
@@ -452,6 +523,9 @@ export function renderVerdict(root, m, r, { title, text, reality, sources, achie
     const labels = m.labels().map(shortLabel);
     const yours = m.history.map(h => h.state.inflation);
     const real = m.scenario.realPath;
+    const fxChart = m.fx ? compareChart({ labels, band: false, unit: '', title: 'Tipo de cambio (S/ por US$)' + (real?.fxRate ? ': tú vs. la historia real' : ''), series: [
+        { values: m.history.map(h => h.fx), color: 'var(--navy)', label: 'Tu tipo de cambio' },
+        ...(real?.fxRate ? [{ values: [null, ...real.fxRate], color: 'var(--red)', label: 'Tipo de cambio real', dash: true }] : [])] }) : '';
     const charts = real
         ? compareChart({ labels, title: 'Inflación: tú vs. la historia real', series: [
             { values: yours, color: 'var(--navy)', label: 'Tu inflación' },
@@ -476,7 +550,7 @@ export function renderVerdict(root, m, r, { title, text, reality, sources, achie
         ${r.checks ? `<div class="section-title">Objetivos</div><ul class="goals">${r.checks.map(c => `<li><span class="mark ${c.ok ? 'ok' : 'no'}">${c.ok ? '✓' : '✗'}</span><span>${c.label}</span><span class="val num">${c.value}</span></li>`).join('')}</ul>` : ''}
         <div class="verdict-stats">${stats.map(([v, l]) => `<div><strong class="num">${v}</strong><small>${l}</small></div>`).join('')}</div>
         <div class="section-title">Tu recorrido</div>
-        <div class="chart">${charts}</div>
+        <div class="chart">${charts}${fxChart}</div>
         ${peopleBalance(m.peopleHistory, m.regionHistory)}
         ${reality ? `<div class="section-title">Lo que pasó en la realidad</div><p class="reality">${reality}</p>` : ''}
         ${achievements.length ? `<div class="section-title">Logros</div>

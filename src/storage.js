@@ -86,3 +86,13 @@ export function saveSettings(patch) {
     const d = read();
     write({ ...d, settings: { ...(d.settings ?? {}), ...patch } });
 }
+
+/** Marcas de "ya visto" (introducciones de herramientas, etc.). */
+export function getFlag(name) {
+    return !!read().flags?.[name];
+}
+
+export function setFlag(name) {
+    const d = read();
+    write({ ...d, flags: { ...(d.flags ?? {}), [name]: true } });
+}

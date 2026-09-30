@@ -106,6 +106,11 @@ const SECTOR_VOICES = {
             'La tarjeta de crédito ya nos está ahorcando.'
         ],
         tasaAlta: ['Con las tasas tan altas, nadie en el barrio se anima a pedir un préstamo.'],
+        dolar: [
+            'El crédito del carro es en dólares. Con el dólar así, la cuota me sale muchos más soles.',
+            'Nos endeudamos en dólares porque era más barato. Ahora nos está costando carísimo.',
+            'Gano en soles y debo en dólares. Cada vez que sube el dólar, me hundo un poco más.'
+        ],
         estable: ['La cuota sigue igual. Vamos pagando.', 'Pagamos puntual, sin sobresaltos.'],
         tasaBaja: [
             'Refinanciamos el préstamo con una tasa más baja. Respiramos un poco.',
@@ -147,7 +152,8 @@ function dominant(terms, fallback) {
 }
 
 /** Ánimo por sector tras un turno del motor de tasa. */
-export function rateMoods({ state, move, rate }, potentialGrowth = 3) {
+export function rateMoods({ state, move, rate, fx = null }, potentialGrowth = 3) {
+    const dep = fx?.dep ?? 0;
     const hurtInfl = Math.max(0, state.inflation - 2.5);
     const food = Math.max(0, state.supply);
     const g = state.growth - potentialGrowth;
@@ -172,8 +178,11 @@ export function rateMoods({ state, move, rate }, potentialGrowth = 3) {
         : dominant([['tasa', tasa], ['ventas', ventas]], 'estable') === 'tasa' ? (tasa < 0 ? 'tasaSube' : 'tasaBaja')
             : (ventas < 0 ? 'ventasCaen' : 'ventasSuben');
 
-    const deudScore = 0.5 - 1.6 * move - 0.2 * Math.max(0, rate - 4);
-    const deudCause = move > 0 ? 'tasaSube' : move < 0 ? 'tasaBaja' : rate > 6 ? 'tasaAlta' : 'estable';
+    // Dolarización: muchas familias deben en dólares y ganan en soles.
+    const dolarHit = -0.3 * Math.max(0, dep - 1);
+    const deudScore = 0.5 - 1.6 * move - 0.2 * Math.max(0, rate - 4) + dolarHit;
+    const deudCause = dolarHit < -0.6 && dolarHit < -1.6 * move ? 'dolar'
+        : move > 0 ? 'tasaSube' : move < 0 ? 'tasaBaja' : rate > 6 ? 'tasaAlta' : 'estable';
 
     const ahoTasa = 0.5 * realRate, ahoInfl = -0.6 * Math.max(0, state.inflation - 3);
     const ahoScore = 0.2 + ahoTasa + ahoInfl;

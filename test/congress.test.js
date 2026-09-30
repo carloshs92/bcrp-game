@@ -3,10 +3,12 @@ import assert from 'node:assert/strict';
 import Mandate from '../src/game/mandate.js';
 import { QUESTIONS, DECLARATIONS, FOLLOW_UP } from '../src/model/congress.js';
 
-// Sube la tasa sin parar hasta que el Congreso cite al Directorio.
+// Un Congreso muy molesto: al terminar el turno debería citar al Directorio.
 function untilCitation(seed = 1) {
     const m = new Mandate(seed);
-    while (!m.isOver && !m.congress.pending) m.decide(m.state.rate + 0.75);
+    m.decide(m.state.rate);
+    m.pressure = 80;
+    m.decide(m.state.rate);
     return m;
 }
 

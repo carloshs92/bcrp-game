@@ -66,22 +66,26 @@ export function fanChart({ history, projection, total, labels }) {
  * Gráfico de comparación: varias series sobre las mismas etiquetas (p. ej. tu inflación
  * vs. la del BCRP real). `series` = [{ values, color, label, dash? }]; `band` dibuja la meta.
  */
-export function compareChart({ labels, series, band = true, unit = '%', title }) {
+export function compareChart({ labels, series, band = true, unit = '%', title, zero = unit === '%' }) {
     const W = 640, H = 220;
     const pad = { l: 44, r: 26, t: 14, b: 28 };
     const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
     const n = labels.length - 1;
     const all = series.flatMap(s => s.values.filter(v => v != null));
-    const yMax = Math.max(band ? 4 : 1, Math.ceil(Math.max(...all) + 0.5));
-    const yMin = Math.min(0, Math.floor(Math.min(...all) - 0.5));
+    // Series en niveles (como el tipo de cambio) no parten de cero: se hace zoom a su rango.
+    const lo = Math.min(...all), hi = Math.max(...all), padY = Math.max(0.05, (hi - lo) * 0.15);
+    const yMax = zero ? Math.max(band ? 4 : 1, Math.ceil(hi + 0.5)) : hi + padY;
+    const yMin = zero ? Math.min(0, Math.floor(lo - 0.5)) : lo - padY;
     const x = i => pad.l + (i / Math.max(1, n)) * iw;
     const y = v => pad.t + (1 - (v - yMin) / (yMax - yMin)) * ih;
-    const stepV = (yMax - yMin) > 12 ? Math.ceil((yMax - yMin) / 6) : 1;
+    const stepV = zero ? ((yMax - yMin) > 12 ? Math.ceil((yMax - yMin) / 6) : 1) : niceStep((yMax - yMin) / 5);
+    const first = zero ? yMin : Math.ceil(yMin / stepV) * stepV;
+    const dec = zero ? 0 : Math.max(0, -Math.floor(Math.log10(stepV)));
 
     const grid = [];
-    for (let v = yMin; v <= yMax; v += stepV) {
+    for (let v = first; v <= yMax + 1e-9; v += stepV) {
         grid.push(`<line x1="${pad.l}" x2="${W - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--grid)"/>`);
-        grid.push(`<text x="${pad.l - 7}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v}${unit}</text>`);
+        grid.push(`<text x="${pad.l - 7}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${v.toFixed(dec)}${unit}</text>`);
     }
     const xl = labels.map((t, i) => (n <= 10 || i % 2 === 0)
         ? `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${t}</text>` : '').join('');
@@ -99,4 +103,10 @@ export function compareChart({ labels, series, band = true, unit = '%', title })
       <svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${title ?? 'Comparación'}">${grid.join('')}${bandSvg}${lines}${xl}</svg>
       <div class="legend">${series.map(s => `<span><i style="background:${s.color}"></i>${s.label}</span>`).join('')}</div>
     </figure>`;
+}
+
+function niceStep(raw) {
+    const p = 10 ** Math.floor(Math.log10(raw));
+    const n = raw / p;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
 }

@@ -69,6 +69,7 @@ export const TAG_EFFECTS = {
     politica: [['credito', -0.4], ['demanda', -0.3]],
     'fiscal+': [['demanda', 0.6], ['alimentos', 0.3]],
     dolar: [['combustible', -0.6], ['credito', -0.3]],
+    'sol-fuerte': [['mineria', -0.3], ['agro', -0.5], ['turismo', -0.3]],
     // 1990
     'sueldos-': [['demanda', -0.8]],
     colera: [['pesca', -1.8], ['alimentos', -0.6]]
@@ -136,7 +137,15 @@ export const REGION_VOICES = {
     'exportaciones-': ['Los compradores de afuera cancelaron pedidos. {P} no tiene salida.'],
     politica: ['Con tanta pelea en Lima, nadie se anima a invertir por aquí.'],
     'fiscal+': ['Llegó el bono y la gente salió a comprar. Pero todo está subiendo de precio.'],
-    dolar: ['Con el dólar así, todo lo que viene de afuera está más caro.'],
+    dolar: [
+        'Con el dólar así, todo lo que viene de afuera está más caro.',
+        'Saqué un préstamo en dólares para la camioneta y ahora la cuota me sale más soles.',
+        'Los repuestos y los fertilizantes son importados: con el dólar arriba, todo sube.'
+    ],
+    'sol-fuerte': [
+        'Con el dólar tan barato, lo que exportamos nos rinde menos soles.',
+        'Nos pagan {p} en dólares y cada vez nos alcanza para menos en soles.'
+    ],
     'sueldos-': ['Los sueldos del Estado no alcanzan y el mercado está vacío.'],
     colera: ['Con el cólera nadie quiere comprar pescado. Nos estamos quedando sin nada.'],
     // Causas "de fondo" (sin evento local): vienen del contexto nacional.

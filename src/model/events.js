@@ -61,6 +61,12 @@ export const EVENTS = [
         shock: { demand: 0.6, supply: -0.3 }, asks: null
     },
     {
+        id: 'fed-baja', tier: 1, kind: 'externo', who: 'cambista',
+        title: 'La Fed baja sus tasas',
+        quote: 'Los capitales vuelven a mercados como el nuestro. Hoy todos venden dólares, jefe: está bajando.',
+        shock: { demand: 0.3, supply: -0.2 }, asks: null
+    },
+    {
         id: 'gremio-credito', tier: 1, kind: 'politica', who: 'gamarra',
         title: 'Las mypes piden crédito más barato',
         quote: 'Con estos intereses la caja municipal me cobra un ojo de la cara. ¡Bajen la tasa, pues!',
@@ -96,6 +102,12 @@ export const EVENTS = [
         title: 'El galón de gasolina sube otra vez',
         quote: 'Con lo que cuesta el combustible tenemos que subir el pasaje. Si no, no sale ni para el día.',
         shock: { supply: 1.0 }, asks: null
+    },
+    {
+        id: 'guerra-petroleo', tier: 2, kind: 'externo', who: 'chofer',
+        title: 'Guerra en Medio Oriente: el petróleo se dispara',
+        quote: 'Dicen que es por una guerra al otro lado del mundo, pero el galón lo pago yo aquí. Otra vez sube el pasaje.',
+        shock: { supply: 1.3, demand: -0.2, credibility: -2 }, asks: null
     },
     {
         id: 'boom-inmobiliario', tier: 2, kind: 'demanda', who: 'gremio',
@@ -141,9 +153,16 @@ const EVENT_TAGS = {
     'consumo-sube': ['consumo+'], 'ministro-impulso': ['fiscal+'], 'cobre-alto': ['cobre+'],
     'nino-golpe': ['nino'], 'fed-sube': ['dolar'], elecciones: ['politica'], petroleo: ['combustible'],
     'boom-inmobiliario': ['credito+', 'consumo+'], 'conflicto-minero': ['conflicto-minero'],
-    'recesion-mundial': ['exportaciones-', 'cobre-'], 'ministro-presiona': ['politica'], 'gasto-fiscal': ['fiscal+']
+    'recesion-mundial': ['exportaciones-', 'cobre-'], 'ministro-presiona': ['politica'], 'gasto-fiscal': ['fiscal+'],
+    'guerra-petroleo': ['combustible'], 'fed-baja': ['credito+']
 };
-EVENTS.forEach(e => { e.tags = EVENT_TAGS[e.id] ?? []; });
+// Presión sobre el dólar (% de depreciación del sol en el trimestre si nadie interviene).
+const EVENT_FX = {
+    'cobre-alto': -2.5, 'nino-golpe': 0.8, 'fed-sube': 3.5, elecciones: 2.5, petroleo: 0.8,
+    'conflicto-minero': 1.2, 'recesion-mundial': 3, 'ministro-presiona': 1, 'expectativas-suben': 1.5, 'gasto-fiscal': 1,
+    'guerra-petroleo': 2, 'fed-baja': -2.5
+};
+EVENTS.forEach(e => { e.tags = EVENT_TAGS[e.id] ?? []; e.fx = EVENT_FX[e.id] ?? 0; });
 
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map(e => [e.id, e]));
 
@@ -158,14 +177,16 @@ export const SURPRISES = [
     { id: 'crisis-politica', who: 'prensa', title: 'Crisis política: el Congreso cambia al Gabinete', text: 'Censuran al Premier y juramenta un nuevo Consejo de Ministros. Los inversionistas se ponen nerviosos.', shock: { demand: -0.4, credibility: -3 }, pressure: 8 },
     { id: 'turismo', who: 'gremio', title: 'Temporada récord de turismo', text: 'Cusco y Machu Picchu reciben más visitantes que nunca. Hoteles y restaurantes a tope.', shock: { demand: 0.35 } },
     { id: 'dolar-baja', who: 'cambista', title: 'El dólar se abarata', text: 'Entran capitales al Perú y el dólar baja. Lo importado se abarata un poco.', shock: { supply: -0.3 } },
+    { id: 'fletes', who: 'gremio', title: 'Se disparan los fletes marítimos', text: 'Ataques a buques en una ruta clave del comercio mundial encarecen el transporte de contenedores. Lo importado llega más caro.', shock: { supply: 0.4 } },
     { id: 'lluvias-norte', who: 'meteo', title: 'Lluvias intensas en el norte', text: 'Desbordes en Piura y Lambayeque. Se pierden cosechas de limón y arroz.', shock: { supply: 0.4, demand: -0.2 } }
 ];
 
 const SURPRISE_TAGS = {
     'paro-transportistas': ['transporte'], 'huaico-central': ['central'], 'balon-gas': ['combustible'],
     'cobre-cae': ['cobre-'], 'heladas-sur': ['heladas'], anchoveta: ['pesca-'], 'crisis-politica': ['politica'],
-    turismo: ['turismo+'], 'lluvias-norte': ['lluvias']
+    turismo: ['turismo+'], 'lluvias-norte': ['lluvias'], fletes: ['combustible']
 };
-SURPRISES.forEach(x => { x.tags = SURPRISE_TAGS[x.id] ?? []; });
+const SURPRISE_FX = { fletes: 0.5, 'cobre-cae': 2.5, 'crisis-politica': 3, 'dolar-baja': -2.5, 'paro-transportistas': 0.5, turismo: -0.5 };
+SURPRISES.forEach(x => { x.tags = SURPRISE_TAGS[x.id] ?? []; x.fx = SURPRISE_FX[x.id] ?? 0; });
 
 export const SURPRISE_BY_ID = Object.fromEntries(SURPRISES.map(s => [s.id, s]));

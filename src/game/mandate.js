@@ -12,6 +12,31 @@ import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, pickDeclaration } from '../model/
  */
 
 export const MOVES = [-0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75];
+/** Intervención cambiaria por turno, en miles de millones de US$ (positivo = vender dólares). */
+export const FX_MOVES = [3, 1.5, 0, -1.5, -3];
+
+/**
+ * Mercado cambiario (trimestral). La depreciación del sol en el turno (%):
+ *   presión externa/interna del evento − efecto de subir la tasa − ventas de dólares + ruido.
+ * Un dólar más caro se traslada a precios (choque de oferta) y golpea a quienes deben en dólares.
+ */
+export const FX = {
+    rateEffect: 1.2,     // cada punto de alza de la tasa aprecia el sol ~1.2% en el trimestre
+    saleEffect: 1.0,     // cada US$ 1 mil millones vendido reduce ~1% la depreciación
+    passThrough: 0.12,   // 10% de depreciación suma ~1.2 al choque de oferta del trimestre
+    balanceSheet: 0.06,  // dolarización: cada 1% de depreciación resta demanda
+    noise: 1.6
+};
+
+/** Traslado a precios: asimétrico (los precios suben con el dólar más de lo que bajan). */
+function passThrough(dep) {
+    return FX.passThrough * (dep > 0 ? dep : 0.5 * dep);
+}
+
+/** Depreciación esperada (%) sin ruido: la usa la proyección y la mesa de dinero. */
+export function expectedDepreciation(pressure, move, sell) {
+    return pressure - FX.rateEffect * move - FX.saleEffect * sell;
+}
 export const DEFAULT_LIMITS = { pressure: 100, credibility: 15, inflation: 7, growth: -3 };
 
 export const FREE_SCENARIO = {
@@ -26,6 +51,7 @@ export const FREE_SCENARIO = {
     intensityGrowth: 0.3,
     surpriseChance: 0.3,
     citations: true, // el Congreso cita al Directorio cuando está molesto
+    fx: { rate: 3.75, reserves: 80 }, // tipo de cambio S/ por US$ y reservas en US$ miles de millones
     reappoint: { minInBand: 9 }
 };
 
@@ -110,6 +136,9 @@ export default class Mandate {
         this.moves = scenario.moves ?? MOVES;
         this.maxMove = Math.max(...this.moves.map(Math.abs));
         this.gradual = !!scenario.monthlyMeetings;
+        // Mercado cambiario (opcional por escenario): tipo de cambio y reservas en US$ miles de millones.
+        this.fx = scenario.fx ? { rate: scenario.fx.rate, reserves: scenario.fx.reserves, initialReserves: scenario.fx.reserves, lastDep: 0 } : null;
+        this.fxStart = this.fx?.rate ?? null;
         this.state = createState(scenario.initial);
         this.state.growth = this.params.potentialGrowth + this.state.outputGap;
         this.pressure = scenario.pressure ?? 20;
@@ -126,9 +155,11 @@ export default class Mandate {
         this.effects = []; // efectos de herramientas que duran varios turnos
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
-        this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio' }];
+        this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
         // El Congreso usa su propio azar para no alterar la secuencia de choques (y la calibración).
         this.crng = mulberry32((seed ^ 0x5bd1e995) >>> 0);
+        // Y el dólar, otro: se consume exactamente una vez por turno, decida lo que decida el jugador.
+        this.fxRng = mulberry32((seed ^ 0x27d4eb2f) >>> 0);
         this.year = Number(String(scenario.year ?? scenario.startYear ?? 2027).match(/\d{4}(?!.*\d{4})/)?.[0] ?? 2027);
         this.congress = { lastCitation: -99, promise: null, pending: null, used: new Set(), citations: 0, promisesBroken: 0 };
         this.event = this.drawEvent();
@@ -251,7 +282,8 @@ export default class Mandate {
         let i = 0;
         while (!m.isOver) {
             if (i === 1) m.tools.forEach(t => m.useTool(t.id));
-            m.decide(scenario.realPath.rate[i++]);
+            m.decide(scenario.realPath.rate[i], scenario.realPath.fxSales?.[i] ?? 0);
+            i++;
         }
         return m.history.slice(1).map(h => h.state.inflation);
     }
@@ -260,8 +292,23 @@ export default class Mandate {
         return this.effects.reduce((acc, e) => addShock(acc, e.shock), {});
     }
 
-    projection(rate) {
-        return projectPath(this.state, rate, this.event, 4, this.params, this.steps, this.toolShock(), this.gradual);
+    /** Presión sobre el dólar de este turno según el evento (sin imprevistos). */
+    fxPressure() {
+        return this.event.fx ?? 0;
+    }
+
+    /** Cuánto se puede vender sin bajar del piso de reservas (30% del nivel inicial). */
+    maxSale() {
+        return this.fx ? Math.max(0, this.fx.reserves - 0.3 * this.fx.initialReserves) : 0;
+    }
+
+    projection(rate, sell = 0) {
+        let extra = this.toolShock();
+        if (this.fx) {
+            const dep = expectedDepreciation(this.fxPressure(), rate - this.state.rate, sell);
+            extra = addShock(extra, { supply: passThrough(dep), demand: -FX.balanceSheet * Math.max(0, dep) });
+        }
+        return projectPath(this.state, rate, this.event, 4, this.params, this.steps, extra, this.gradual);
     }
 
     /** Usa una herramienta especial (p. ej. Reactiva Perú). Dura `effect.turns` turnos. */
@@ -274,8 +321,10 @@ export default class Mandate {
         return true;
     }
 
-    decide(newRate) {
+    decide(newRate, sell = 0) {
         newRate = Math.max(this.minRate, newRate);
+        if (!this.fx) sell = 0;
+        sell = Math.min(sell, this.maxSale());
         const prev = this.state;
         const prevPressure = this.pressure;
         const event = this.event;
@@ -286,7 +335,19 @@ export default class Mandate {
 
         // Los choques pegan más fuerte a medida que avanza el mandato (solo modo libre).
         const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / 4);
-        const total = addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock());
+        let total = addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock());
+        // Mercado cambiario: se resuelve antes que los precios, porque el dólar se traslada a la inflación.
+        let fxRecord = null;
+        if (this.fx) {
+            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0);
+            const dep = expectedDepreciation(pressure, move, sell) + (this.fxRng() - 0.5) * FX.noise;
+            const before = { ...this.fx };
+            this.fx.rate *= 1 + dep / 100;
+            this.fx.reserves = Math.max(0, this.fx.reserves - sell);
+            this.fx.lastDep = dep;
+            total = addShock(total, { supply: passThrough(dep), demand: -FX.balanceSheet * Math.max(0, dep), credibility: dep > 4 ? -2 : 0 });
+            fxRecord = { before, rate: this.fx.rate, reserves: this.fx.reserves, dep, sell, pressure };
+        }
         const base = splitShock(total, this.steps);
 
         // Varios meses con la misma tasa, más ruido: el futuro nunca sale igual a la proyección.
@@ -353,6 +414,14 @@ export default class Mandate {
         this.bestStreak = Math.max(this.bestStreak, this.streak);
 
         const label = this.label();
+        if (this.fx) {
+            const share = this.fx.reserves / this.fx.initialReserves;
+            if (share < 0.5) {
+                s = { ...s, credibility: Math.max(0, s.credibility - 3) };
+                notes.push({ tone: 'bad', text: `Las reservas bajaron a US$ ${this.fx.reserves.toFixed(1)} mil millones. Los mercados temen que el BCR ya no pueda defender al sol.` });
+            }
+            if (fxRecord.dep > 4) notes.push({ tone: 'warn', text: `El dólar subió ${fxRecord.dep.toFixed(1)}% en el trimestre: quienes deben en dólares pagan más soles y lo importado se encarece.` });
+        }
         const record = {
             quarter: this.quarter, label, event, surprise, prev, state: s,
             rate: newRate, move, drivers, notes,
@@ -364,13 +433,15 @@ export default class Mandate {
                 inflation: this.scenario.realPath.inflation[this.quarter]
             } : null
         };
+        record.fx = fxRecord;
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
-        record.regions = regionMoods({ state: s, move, tags: [...(event.tags ?? []), ...(surprise?.tags ?? [])] });
+        const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];
+        record.regions = regionMoods({ state: s, move, tags: [...new Set([...(event.tags ?? []), ...(surprise?.tags ?? []), ...fxTags])] });
         this.regionHistory.push(record.regions);
         record.declaration = this.reference ? null : pickDeclaration({ move, pressure: this.pressure, year: this.year, rng: this.crng });
         record.headline = headline({ ...record, surprising: Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove }, this.params);
-        this.history.push({ state: s, rate: newRate, pressure: this.pressure, label });
+        this.history.push({ state: s, rate: newRate, pressure: this.pressure, label, fx: this.fx?.rate ?? null, reserves: this.fx?.reserves ?? null });
 
         const L = this.limits;
         if (this.pressure >= L.pressure) this.gameOver = 'presion';

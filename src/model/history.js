@@ -74,6 +74,8 @@ export const CHAPTERS = [
         initial: { rate: 5.0, outputGap: 2.5, core: 3.0, supply: 0.9, expectations: 2.8, credibility: 80 },
         pressure: 15,
         limits: { inflation: 9, growth: -6 },
+        // Tipo de cambio promedio de dic. 2007 (BCRPData PN01234PM) y RIN aprox. en US$ (PN00026MM ÷ tipo de cambio).
+        fx: { rate: 2.981, reserves: 27.9 },
         script: [
             ev('08a', 'caserita', 'El precio del pan y el aceite se dispara', 'El trigo y el aceite están carísimos en el mundo, hijito. Todo sube en el mercado.', { supply: 1.1, demand: 1.4 }, { kind: 'oferta', asks: 'subir' }),
             ev('08b', 'chofer', 'El petróleo llega a récords', 'El barril está por encima de 100 dólares. Los pasajes suben otra vez.', { supply: 0.9, demand: 1.2 }, { kind: 'oferta' }),
@@ -82,7 +84,7 @@ export const CHAPTERS = [
             ev('09a', 'minero', 'Caen las exportaciones', 'Nuestros compradores en el mundo cancelaron pedidos. Estamos parando turnos.', { demand: -3.2, supply: -1.5 }, { kind: 'externo', asks: 'bajar', pressure: 10 }),
             ev('09b', 'gamarra', 'Las ventas se enfrían', 'La gente ya no compra como antes. Los bancos están más exigentes con el crédito.', { demand: -1.2, supply: -0.9 }, { kind: 'demanda', asks: 'bajar', pressure: 8 }),
             ev('09c', 'analista', 'Los mercados se estabilizan', 'Lo peor parece haber pasado. China vuelve a comprar metales.', { demand: 0.2, supply: -0.6 }, { kind: 'externo' }),
-            ev('09d', 'gremio', 'Vuelve la confianza', 'Los pedidos regresan poco a poco. Si se mantiene el crédito barato, 2010 será un buen año.', { demand: 0.5, supply: -0.2 }, { kind: 'demanda' })
+            ev('09d', 'gremio', 'Vuelve la confianza', 'Los pedidos regresan poco a poco. Si se mantiene el crédito barato, 2010 será un buen año.', { demand: 0.9, supply: 0.2 }, { kind: 'demanda' })
         ],
         surpriseChance: 0.25,
         goals: [
@@ -93,7 +95,12 @@ export const CHAPTERS = [
         ],
         realPath: {
             rate: [5.25, 5.75, 6.50, 6.50, 6.00, 3.00, 1.25, 1.25],
-            inflation: [5.55, 5.71, 6.22, 6.65, 4.78, 3.06, 1.20, 0.25]
+            inflation: [5.55, 5.71, 6.22, 6.65, 4.78, 3.06, 1.20, 0.25],
+            // Tipo de cambio promedio del último mes de cada trimestre (PN01234PM).
+            fxRate: [2.811, 2.892, 2.966, 3.114, 3.175, 2.990, 2.910, 2.877],
+            // Ventas netas aproximadas en US$ miles de millones (el BCRP vendió US$ 5,695 millones desde
+            // set. 2008); se usan solo para simular al BCRP real en el puntaje, no se muestran.
+            fxSales: [0, 0, 1.5, 3, 1.5, 0, 0, 0]
         },
         sources: [
             { label: 'BCRPData – Tasa de referencia (PD04722MM)', url: 'https://estadisticas.bcrp.gob.pe/estadisticas/series/mensuales/resultados/PD04722MM/html' },
@@ -206,6 +213,8 @@ export const CHAPTERS = [
         initial: { rate: 0.25, outputGap: 0.5, core: 2.2, supply: 1.0, expectations: 2.5, credibility: 80 },
         pressure: 20,
         limits: { inflation: 12, credibility: 10 },
+        // Tipo de cambio promedio de jun. 2021 y RIN aprox. en US$ (BCRPData).
+        fx: { rate: 3.910, reserves: 71 },
         script: [
             ev('21c', 'cambista', 'El dólar supera los cuatro soles', '¡Nunca había visto el dólar tan alto! Con la incertidumbre política todos quieren dólares.', { supply: 1.2, demand: 0.4, credibility: -3 }, { kind: 'externo' }),
             ev('21d', 'chofer', 'Sube todo: pasajes, gas, alimentos', 'El combustible y los repuestos están carísimos. Los pasajes ya subieron un sol.', { supply: 0.9, demand: 0.2 }, { kind: 'oferta', asks: 'subir' }),
@@ -226,7 +235,10 @@ export const CHAPTERS = [
         ],
         realPath: {
             rate: [1.00, 2.50, 4.00, 5.50, 6.75, 7.50, 7.75, 7.75, 7.50, 6.75],
-            inflation: [5.23, 6.43, 6.82, 8.81, 8.53, 8.46, 8.40, 6.46, 5.04, 3.24]
+            inflation: [5.23, 6.43, 6.82, 8.81, 8.53, 8.46, 8.40, 6.46, 5.04, 3.24],
+            fxRate: [4.107, 4.037, 3.739, 3.747, 3.898, 3.829, 3.780, 3.651, 3.730, 3.734],
+            // Aproximado: tras el récord de ventas del primer semestre de 2021, el BCRP siguió vendiendo en 2021.
+            fxSales: [3, 1.5, 0, 0, 0, 0, 0, 0, 0, 0]
         },
         sources: [
             { label: 'Infobae – Inflación anual alcanzó 8.81% en junio de 2022', url: 'https://www.infobae.com/america/peru/2022/07/02/inflacion-anual-alcanzo-el-881-en-junio-el-nivel-mas-alto-en-25-anos/' },
@@ -274,6 +286,14 @@ const SCRIPT_TAGS = {
     '20a': ['cuarentena'], '20b': ['cuarentena'], '20c': ['reapertura'], '20d': ['reapertura'],
     '21c': ['dolar', 'politica'], '21d': ['combustible'], '22a': ['agro-', 'combustible'], '22d': ['politica'], '23a': ['lluvias']
 };
-[TUTORIAL, ...CHAPTERS].forEach(c => c.script?.forEach(e => { e.tags = SCRIPT_TAGS[e.id] ?? []; }));
+// Presión sobre el dólar de los eventos guionados (% de depreciación en el trimestre sin intervención).
+const SCRIPT_FX = {
+    // Calibradas para que, replicando la tasa y las ventas de dólares del BCRP, el modelo
+    // reproduzca la variación trimestral real del tipo de cambio (BCRPData PN01234PM):
+    // presión = depreciación real + 1.2 × cambio de tasa + ventas (US$ miles de millones).
+    '08a': -5.4, '08b': 3.5, '08c': 5, '08d': 8, '09a': 2.9, '09b': -9.4, '09c': -4.8, '09d': -1.1,
+    '21c': 8.9, '21d': 1.6, '22a': -5.6, '22b': 2, '22c': 5.5, '22d': -0.9, '23a': -1, '23b': -3.4, '23c': 1.9, '23d': -0.8
+};
+[TUTORIAL, ...CHAPTERS].forEach(c => c.script?.forEach(e => { e.tags = SCRIPT_TAGS[e.id] ?? []; e.fx = SCRIPT_FX[e.id] ?? 0; }));
 
 export const CHAPTER_BY_ID = Object.fromEntries(CHAPTERS.map(c => [c.id, c]));

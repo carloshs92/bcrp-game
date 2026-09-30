@@ -582,3 +582,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .declaration small { display: block; font-size: 11.5px; font-weight: 700; color: #7a2e8e; margin-bottom: 2px; }
 .declaration p { font-style: italic; font-size: 14.5px; color: var(--ink); }
 .note.good { background: var(--good-bg); color: #145c39; }
+
+/* ================= Mercado cambiario ================= */
+.meters.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.meters.five .meter-val { font-size: 21px; }
+.fx-block { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--surface-2); }
+.fx-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; font-size: 13.5px; }
+.fx-head > span { color: var(--ink-2); font-size: 12.5px; }
+.fx-block .steps { margin-bottom: 8px; }
+.fx-block .steps button { font-size: 12.5px; padding: 7px 0; background: var(--surface); }
+.fx-block .steps button.on { background: #0f5a4a; border-color: #0f5a4a; color: #fff; }
+.fx-out { font-size: 13px; color: var(--ink-2); margin-bottom: 6px; }
+.fx-trade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px; color: var(--ink-2); }
+.fx-trade strong { color: var(--ink); }
+.deltas { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+@media (max-width: 960px) { .meters.five { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .fx-trade { grid-template-columns: 1fr; } }
+
+.tradeoff-table { display: grid; gap: 4px; font-size: 12.5px; color: var(--ink-2); background: var(--surface-2); border-radius: 8px; padding: 7px 10px; margin-bottom: 10px; }
+.tt-head, .tt-row { display: grid; grid-template-columns: 62px 1fr 1fr; gap: 10px; }
+.tt-head span { font-weight: 700; color: var(--ink); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+.tt-row strong { color: var(--navy); }
+@media (max-width: 640px) { .tt-head, .tt-row { grid-template-columns: 54px 1fr 1fr; gap: 6px; } }
