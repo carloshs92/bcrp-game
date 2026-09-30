@@ -31,7 +31,7 @@ export const TUTORIAL_COACH = {
     result: {
         0: rec => [
             { target: '.reveal', text: `Proyectabas ${pct(rec.projected)} y resultó ${pct(rec.state.inflation)}. La realidad casi nunca sale exacta: hay factores que nadie ve venir.` },
-            { target: '.why', text: 'Si quieres entender qué movió la inflación, abre "¿Por qué cambió la inflación?". Recuerda: la tasa tarda en hacer efecto.' }
+            { target: '.ptabs-nav', text: 'El diario tiene pestañas: <strong>La gente</strong> te cuenta cómo lo vivió cada sector, <strong>Regiones</strong> muestra el mapa del Perú y <strong>¿Por qué?</strong> explica qué movió la inflación. Recuerda: la tasa tarda en hacer efecto.' }
         ]
     }
 };

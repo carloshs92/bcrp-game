@@ -7,7 +7,8 @@ import { openGlossary } from './glossary.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { avatar, announceSuspense, showBreaking, animateNumber, shortLabel, createTimer } from './play.js';
 import { getSettings } from '../storage.js';
-import { peoplePanel, peopleReport, peopleBalance, bindPeople } from './people.js';
+import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
+import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 
 const pct = v => `${v.toFixed(1)}%`;
@@ -177,12 +178,18 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
             <span class="delta">Actividad <strong class="num">${pct(rec.state.activity)}</strong></span>
             <span class="delta">Emisión <strong class="num">${rec.choice.emission}%</strong></span>
           </div>
-          ${rec.timeout ? '<div class="note warn">Se acabó el tiempo: no decidir también es decidir. El BCR siguió haciendo lo mismo de antes.</div>' : ''}
-          ${rec.notes.map(n => `<div class="note ${n.tone}">${n.text}</div>`).join('')}
-          ${peopleReport(rec.people, rec.regions)}
+          ${tabs([
+            { key: 'resumen', label: 'Resumen', html: `
+              ${rec.timeout ? '<div class="note warn">Se acabó el tiempo: no decidir también es decidir. El BCR siguió haciendo lo mismo de antes.</div>' : ''}
+              ${rec.notes.map(n => `<div class="note ${n.tone}">${n.text}</div>`).join('')}
+              ${!rec.notes.length && !rec.timeout ? '<p class="quiet">Revisa cómo vivió la gente este mes y cómo está cada región.</p>' : ''}` },
+            { key: 'gente', label: 'La gente', badge: hurtCount(rec.people) || null, html: sectorsReport(rec.people) },
+            { key: 'regiones', label: 'Regiones', html: regionsReport(rec.regions) }
+          ])}
           <div class="modal-actions"><button class="btn btn-primary" data-continue>${h.isOver ? 'Ver el veredicto' : 'Siguiente mes'}</button></div>
         `, { dismissible: false });
         animateNumber(modal.querySelector('[data-anim-to]'));
+        bindTabs(modal);
         bindMap(modal);
         modal.querySelector('[data-continue]').addEventListener('click', () => {
             modal.parentElement._close();

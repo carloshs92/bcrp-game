@@ -11,7 +11,8 @@ import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
 import { congressMood } from '../model/congress.js';
 import { face } from './people.js';
-import { peoplePanel, peopleReport, peopleBalance, bindPeople } from './people.js';
+import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
+import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
@@ -437,32 +438,37 @@ export function playScenario(root, scenario, opts) {
             <div class="reveal-num"><small>Inflación</small><span class="num" data-anim-from="${rec.prev.inflation}" data-anim-to="${rec.state.inflation}">${pct(rec.prev.inflation)}</span></div>
             <p class="reveal-note">Proyectabas ${pct(rec.projected)}. ${surprise}</p>
           </div>
-          <div class="deltas">
+          <div class="deltas${rec.fx ? ' six' : ''}">
             ${chip('Inflación', rec.prev.inflation, rec.state.inflation, v => pct(v), rec.state.inflation < PARAMS.target)}
             ${chip('PBI', rec.prev.growth, rec.state.growth, v => pct(v), true)}
             ${chip('Credibilidad', rec.prev.credibility, rec.state.credibility, v => `${Math.round(v)}`, true)}
             ${chip('Congreso', rec.prevPressure, rec.pressure, v => `${Math.round(v)}`, false)}
-            ${rec.fx ? chip('Dólar', rec.fx.before.rate, rec.fx.rate, v => `S/ ${v.toFixed(3)}`, false) : ''}
-            ${rec.fx ? chip('Reservas', rec.fx.before.reserves, rec.fx.reserves, v => `US$ ${v.toFixed(1)} mil M`, true) : ''}
+            ${rec.fx ? chip('Dólar (S/)', rec.fx.before.rate, rec.fx.rate, v => v.toFixed(3), false) : ''}
+            ${rec.fx ? chip('Reservas (US$ mil M)', rec.fx.before.reserves, rec.fx.reserves, v => v.toFixed(1), true) : ''}
           </div>
-          ${rec.streak >= 2 ? `<div class="streak-pop">¡${rec.streak} turnos seguidos en la meta!</div>` : ''}
-          ${rec.timeout ? '<div class="note warn">Se acabó el tiempo y no hubo decisión: todo siguió como estaba. En una crisis, no decidir también es una decisión.</div>' : ''}
-          ${rec.notes.map(n => `<div class="note ${n.tone}">${n.text}</div>`).join('')}
-          ${rec.declaration ? `<div class="declaration"><small>Desde el Congreso · frase real (${rec.declaration.year}, ${rec.declaration.context})</small><p>“${rec.declaration.text}”</p></div>` : ''}
-          ${real}
-          ${peopleReport(rec.people, rec.regions)}
-          <details class="why">
-            <summary>¿Por qué cambió la inflación?</summary>
-            <div class="factors">${factors.map(([label, v]) => `
-              <div class="factor"><span>${label}</span>
-                <div class="bar"><div class="fill ${v >= 0 ? 'up' : 'down'}" style="width:${Math.min(50, Math.abs(v) / scale * 50)}%"></div></div>
-                <span class="val num">${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} pp</span></div>`).join('')}
-            </div>
-            <p class="why-note">${rec.event.kind === 'oferta' ? 'Fue sobre todo un choque de oferta: la tasa no lo evita, pero sí impide que contagie a las expectativas.' : 'La tasa actúa sobre la demanda con rezago: lo que decides hoy pesa más en los próximos trimestres.'}</p>
-          </details>
+          ${tabs([
+            { key: 'resumen', label: 'Resumen', html: `
+              ${rec.streak >= 2 ? `<div class="streak-pop">¡${rec.streak} turnos seguidos en la meta!</div>` : ''}
+              ${rec.timeout ? '<div class="note warn">Se acabó el tiempo y no hubo decisión: todo siguió como estaba. En una crisis, no decidir también es una decisión.</div>' : ''}
+              ${rec.notes.map(n => `<div class="note ${n.tone}">${n.text}</div>`).join('')}
+              ${rec.declaration ? `<div class="declaration"><small>Desde el Congreso · frase real (${rec.declaration.year}, ${rec.declaration.context})</small><p>“${rec.declaration.text}”</p></div>` : ''}
+              ${real}
+              ${!rec.notes.length && !rec.declaration && !real && !rec.timeout && rec.streak < 2 ? '<p class="quiet">Un trimestre sin sobresaltos en la prensa. Revisa cómo lo vivió la gente y cada región.</p>' : ''}` },
+            { key: 'gente', label: 'La gente', badge: hurtCount(rec.people) || null, html: sectorsReport(rec.people) },
+            { key: 'regiones', label: 'Regiones', html: regionsReport(rec.regions) },
+            { key: 'porque', label: '¿Por qué?', html: `
+              <div class="factors">${factors.map(([label, v]) => `
+                <div class="factor"><span>${label}</span>
+                  <div class="bar"><div class="fill ${v >= 0 ? 'up' : 'down'}" style="width:${Math.min(50, Math.abs(v) / scale * 50)}%"></div></div>
+                  <span class="val num">${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)} pp</span></div>`).join('')}
+              </div>
+              <p class="why-note">${rec.event.kind === 'oferta' ? 'Fue sobre todo un choque de oferta: la tasa no lo evita, pero sí impide que contagie a las expectativas.' : 'La tasa actúa sobre la demanda con rezago: lo que decides hoy pesa más en los próximos trimestres.'}</p>
+              ${rec.fx ? `<p class="why-note">El dólar se movió ${rec.fx.dep >= 0 ? '+' : ''}${rec.fx.dep.toFixed(1)}%: ${rec.fx.dep > 0 ? 'eso encareció lo importado y sumó a la inflación.' : 'eso abarató lo importado y restó un poco a la inflación.'}</p>` : ''}` }
+          ])}
           <div class="modal-actions"><button class="btn btn-primary" data-continue>${over ? 'Ver el veredicto' : 'Siguiente turno'}</button></div>
         `, { dismissible: false });
         animateNumber(modal.querySelector('[data-anim-to]'));
+        bindTabs(modal);
         bindMap(modal);
         const steps = opts.coachSteps?.result?.[rec.quarter];
         if (steps) coach(steps(rec));

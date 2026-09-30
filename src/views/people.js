@@ -59,20 +59,34 @@ export function bindPeople(root) {
     bindMap(root);
 }
 
-/** Bloque para el diario: voces de cada sector (peor a mejor) y el país por regiones. */
-export function peopleReport(moods, regions) {
+/** Voces de cada sector, de peor a mejor (para el diario). */
+export function sectorsReport(moods) {
     const sorted = [...moods].sort((a, b) => a.mood - b.mood);
-    const sum = regions ? regionSummary(regions) : null;
-    return `
-    <div class="section-title">Cómo lo vive la gente</div>
-    <div class="people-report">${sorted.map(s => `
+    return `<div class="people-report">${sorted.map(s => `
       <div class="pr-row">${face(s.mood, 34)}<div><strong>${s.name}</strong><span>“${sectorVoice(s)}”</span></div></div>`).join('')}
-    </div>
-    ${regions ? `
-    <div class="section-title">El país por regiones</div>
+    </div>`;
+}
+
+/** El país por regiones (para el diario). */
+export function regionsReport(regions) {
+    const sum = regionSummary(regions);
+    return `
     ${sum.hurt ? `<p class="region-line"><strong>Más golpeados:</strong> ${sum.hurt}.</p>` : ''}
     ${sum.good ? `<p class="region-line"><strong>Les fue mejor:</strong> ${sum.good}.</p>` : ''}
-    ${peruMap(regions, { size: 'md' })}` : ''}`;
+    ${peruMap(regions, { size: 'md' })}`;
+}
+
+/** Bloque para el diario en una sola columna (sectores + regiones). */
+export function peopleReport(moods, regions) {
+    return `
+    <div class="section-title">Cómo lo vive la gente</div>
+    ${sectorsReport(moods)}
+    ${regions ? `<div class="section-title">El país por regiones</div>${regionsReport(regions)}` : ''}`;
+}
+
+/** Cuántos sectores lo están pasando mal: para el aviso en la pestaña. */
+export function hurtCount(moods) {
+    return moods.filter(s => s.mood < 0).length;
 }
 
 /** Balance humano para el veredicto: sectores y mapa promedio. */

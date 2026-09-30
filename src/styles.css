@@ -604,3 +604,51 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tt-head span { font-weight: 700; color: var(--ink); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
 .tt-row strong { color: var(--navy); }
 @media (max-width: 640px) { .tt-head, .tt-row { grid-template-columns: 54px 1fr 1fr; gap: 6px; } }
+
+/* ================= Pulido de UX ================= */
+/* La barra de "Anunciar" queda siempre visible al pie de la pantalla. */
+.mandate .decision-actions {
+    position: sticky; bottom: 0; z-index: 5;
+    background: var(--surface); margin: 0 -18px -16px; padding: 12px 18px;
+    border-top: 1px solid var(--line); border-radius: 0 0 var(--radius) var(--radius);
+    box-shadow: 0 -8px 16px -12px rgba(23, 34, 52, .25);
+}
+.ptabs { margin-top: 6px; }
+.ptabs-nav { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; overflow-x: auto; }
+.ptabs-nav button { border: 0; background: transparent; padding: 8px 12px; font-weight: 600; font-size: 14px; color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.ptabs-nav button.on { color: var(--navy); border-bottom-color: var(--red); }
+.ptab-badge { background: var(--bad); color: #fff; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 0 6px; line-height: 17px; }
+.ptabs-pane { min-height: 120px; }
+.quiet { color: var(--muted); font-size: 14px; }
+@media (max-width: 640px) {
+    .mandate .decision-actions { margin: 0 -16px -16px; padding: 10px 16px; }
+    .ptabs-nav button { padding: 8px 9px; font-size: 13px; }
+}
+
+.deltas.six { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.deltas.six .delta strong { font-size: 16px; }
+.deltas.six .delta { font-size: 11px; }
+@media (max-width: 640px) { .deltas.six { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* Móvil: medidores compactos y sin desbordes. */
+.meter-top { min-width: 0; }
+.meter-val { white-space: nowrap; }
+@media (max-width: 640px) {
+    .meters, .meters.five { gap: 8px; }
+    .meter { padding: 8px 10px; }
+    .meter-top { flex-wrap: wrap; gap: 2px 6px; }
+    .meter-top .kpi-label { font-size: 12px; }
+    .meter-val, .meters.five .meter-val { font-size: 18px; }
+    .congress-val { font-size: 13px; gap: 4px; }
+    .congress-val .face { width: 20px; height: 20px; }
+    .meter-sub { display: none; }
+    .meter-track { margin: 6px 0 2px; }
+    .event-head { flex-wrap: wrap; }
+    .event-head .pill { margin-left: 0; order: 3; }
+    .event-head > div { flex: 1; min-width: 0; }
+    .event-head h3 { font-size: 16px; }
+}
+@media (max-width: 640px) {
+    .event-head > div { flex: 1 1 calc(100% - 60px); }
+    .event-head .pill { margin-left: 56px; }
+}
