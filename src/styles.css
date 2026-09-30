@@ -62,7 +62,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
     background: linear-gradient(180deg, #fff 0%, var(--bg) 100%);
 }
 .title-card { max-width: 720px; text-align: center; }
-.title-card svg { width: 220px; height: auto; margin-bottom: 24px; }
+.title-card svg:not(.ico) { width: 220px; height: auto; margin-bottom: 24px; }
 .eyebrow { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--red); }
 .title-card h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.1; color: var(--navy); margin: 8px 0 16px; letter-spacing: -.02em; }
 .title-card p { font-size: 18px; color: var(--ink-2); max-width: 560px; margin: 0 auto 32px; }
@@ -268,7 +268,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 
 /* ================= Modo Mandato ================= */
-.mandate { display: grid; gap: 14px; padding-top: 16px; }
+.mandate { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding-top: 16px; }
 .meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .meter { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 14px; border-top: 4px solid var(--good); }
 .meter.warn { border-top-color: var(--warn); }
@@ -689,3 +689,110 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .no-list small { color: var(--muted); font-size: 12.5px; }
 @media (max-width: 960px) { .intro-art { min-height: 0; } }
 @media (min-width: 961px) { .intro-card { min-height: 470px; } }
+
+/* ================= Vida: íconos, personajes y micro-animaciones ================= */
+.ico { flex: none; display: inline-block; vertical-align: -3px; }
+
+/* Fondo con un tejido andino muy tenue, para que la pantalla no se vea plana. */
+.mandate { background-image: radial-gradient(circle at 1px 1px, rgba(27, 54, 93, .06) 1px, transparent 0); background-size: 22px 22px; border-radius: 0; }
+
+/* Medidores: ícono en pastilla de color, que cambia con el estado. */
+.meter { position: relative; transition: transform .15s, box-shadow .15s; }
+.meter:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(23, 34, 52, .12); }
+.meter-ico { width: 26px; height: 26px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--good-bg); color: var(--good); }
+.meter.warn .meter-ico { background: var(--warn-bg); color: var(--warn); }
+.meter.bad .meter-ico { background: var(--bad-bg); color: var(--bad); animation: wobble 1.6s ease-in-out infinite; }
+.meter .kpi-label { font-weight: 600; color: var(--ink-2); }
+@keyframes wobble { 0%, 60%, 100% { transform: rotate(0); } 70% { transform: rotate(-10deg); } 80% { transform: rotate(10deg); } 90% { transform: rotate(-5deg); } }
+
+/* Títulos de sección con ícono. */
+.h-ico { width: 28px; height: 28px; border-radius: 8px; display: inline-grid; place-items: center; background: var(--info-bg); color: var(--navy-2); flex: none; }
+#debate .h-ico { background: #f1e9fb; color: #6b3fa0; }
+#projection .h-ico { background: #e3f3f5; color: #0f7c8a; }
+.people .h-ico { background: var(--warn-bg); color: var(--warn); }
+
+/* Tarjeta del evento: franja de color por tipo, persona ilustrada y globo de diálogo. */
+.card.event { border-top: 4px solid var(--navy-2); position: relative; overflow: hidden; }
+.card.event.kind-politica { border-top-color: #7a2e8e; }
+.card.event.kind-oferta { border-top-color: #c77700; }
+.card.event.kind-demanda { border-top-color: #c2185b; }
+.card.event.kind-externo { border-top-color: #0f7c8a; }
+.card.event.kind-calma { border-top-color: var(--good); }
+.event-head .pill { display: inline-flex; align-items: center; gap: 5px; }
+.avatar { width: 56px; height: 56px; background: none; border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--c, var(--line)); overflow: hidden; }
+.avatar .bust { width: 100%; height: 100%; display: block; }
+.event blockquote.bubble, .voice.bubble {
+    position: relative; font-style: normal; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 14px; padding: 10px 14px; margin: 4px 0 0 8px;
+}
+.event blockquote.bubble::before, .voice.bubble::before {
+    content: ''; position: absolute; left: 18px; top: -8px; width: 14px; height: 14px; background: var(--surface-2);
+    border-left: 1px solid var(--line); border-top: 1px solid var(--line); transform: rotate(45deg);
+}
+.voice.bubble { margin-left: 0; font-size: 14px; }
+
+/* Asesores: pájaros ilustrados. */
+.adv-top { align-items: center; gap: 10px; }
+.adv-bird { flex: none; width: 42px; height: 42px; transition: transform .2s; }
+.adv-bird .bird { width: 100%; height: 100%; display: block; }
+.adv-name { display: grid; flex: 1; line-height: 1.25; }
+.advisor:hover .adv-bird { transform: rotate(-8deg) scale(1.06); }
+.advisor.on .adv-bird { animation: hop .5s ease; }
+.adv-move { background: var(--surface-2); border-radius: 8px; padding: 2px 8px; }
+.advisor.on .adv-move { background: var(--navy); color: #fff; }
+@keyframes hop { 40% { transform: translateY(-5px); } }
+
+/* Botones de tasa: flecha según dirección. */
+.steps .step-main { display: inline-flex; align-items: center; gap: 3px; justify-content: center; }
+.steps button { transition: transform .1s, background .15s, border-color .15s; }
+.steps button:active:not([disabled]) { transform: scale(.94); }
+.steps button.on { box-shadow: 0 4px 12px rgba(27, 54, 93, .3); }
+.decision .big { transition: color .2s; }
+.decision .big.bump { animation: pop .3s ease; }
+
+/* Botón principal con ícono y un pulso suave que invita a decidir. */
+.btn-announce { display: inline-flex; align-items: center; justify-content: center; gap: 8px; animation: callout 2.6s ease-in-out infinite; }
+@keyframes callout { 0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(27, 54, 93, .0); } 80% { box-shadow: 0 0 0 6px rgba(27, 54, 93, .18); } }
+
+/* Barra de misión con íconos. */
+.mission-role, .mission-goal { display: inline-flex; align-items: center; gap: 6px; }
+.mission-ico { display: inline-grid; place-items: center; color: #8a6400; }
+
+/* Entrada escalonada de las tarjetas al comenzar cada turno. */
+.mandate .meter, .mandate .card { animation: rise .45s cubic-bezier(.2, .8, .2, 1) backwards; }
+.mandate .meter:nth-child(2) { animation-delay: .05s; }
+.mandate .meter:nth-child(3) { animation-delay: .1s; }
+.mandate .meter:nth-child(4) { animation-delay: .15s; }
+.mandate .meter:nth-child(5) { animation-delay: .2s; }
+.mandate .col:first-child .card:nth-of-type(1) { animation-delay: .2s; }
+.mandate .col:first-child .card:nth-of-type(2) { animation-delay: .28s; }
+.mandate .col:first-child .card:nth-of-type(3) { animation-delay: .36s; }
+.mandate .col:last-child .card:nth-of-type(1) { animation-delay: .25s; }
+.mandate .col:last-child .card:nth-of-type(2) { animation-delay: .33s; }
+
+/* Caritas de la gente: pequeño salto al pasar el cursor. */
+.sector .face { transition: transform .15s; }
+.sector:hover .face { transform: translateY(-3px) scale(1.08); }
+
+@media (max-width: 640px) {
+    .avatar { width: 46px; height: 46px; }
+    .adv-bird { width: 36px; height: 36px; }
+    .meter-ico { width: 22px; height: 22px; }
+    .meter { min-width: 0; padding: 10px 10px; }
+    .meter-top { flex-wrap: wrap; row-gap: 2px; }
+    .meter .kpi-label { font-size: 12px; gap: 4px; min-width: 0; }
+    .meter .help { display: none; }
+    .steps button:not([data-dir="0"]) .step-main .ico { display: none; }
+    .steps button { min-width: 0; }
+    .mission-role { display: none; }
+}
+
+/* Inicio: ícono por modo de juego. */
+.mode { grid-template-columns: auto 1fr auto; }
+.mode-ico { grid-row: 1 / span 2; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--info-bg); color: var(--navy-2); transition: transform .2s; }
+.mode[data-story] .mode-ico { background: var(--warn-bg); color: var(--warn); }
+.mode[data-free] .mode-ico { background: var(--good-bg); color: var(--good); }
+.mode.primary .mode-ico { background: rgba(255, 255, 255, .16); color: #fff; }
+.mode:hover .mode-ico { transform: rotate(-6deg) scale(1.06); }
+.mode strong, .mode small { grid-column: 2; }
+.mode .pill { grid-column: 3; }

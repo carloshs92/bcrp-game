@@ -1,5 +1,6 @@
 import { strongestVoice, averageMoods, averageRegions, humanBalance, sectorVoice } from '../game/people.js';
 import { peruMap, bindMap, regionSummary } from './peruMap.js';
+import { icon } from './icons.js';
 
 const MOOD_LABEL = ['Muy mal', 'Mal', 'Regular', 'Bien', 'Muy bien'];
 const MOOD_COLOR = ['#b3261e', '#d9822b', '#8a94a3', '#4c9a6a', '#1d7a4c'];
@@ -29,12 +30,12 @@ export function face(mood, size = 44) {
  */
 export function peoplePanel(moods, { regions = null, title = 'Cómo lo vive la gente', empty } = {}) {
     if (!moods) {
-        return `<section class="card people" id="people"><h3>${title}</h3><p class="people-empty">${empty ?? 'Después de tu primera decisión verás cómo la vive cada sector y cada región del país.'}</p></section>`;
+        return `<section class="card people" id="people"><h3><span class="h-ico">${icon('people', { size: 16 })}</span>${title}</h3><p class="people-empty">${empty ?? 'Después de tu primera decisión verás cómo la vive cada sector y cada región del país.'}</p></section>`;
     }
     const v = strongestVoice(moods);
     return `
     <section class="card people" id="people">
-      <h3>${title}
+      <h3><span class="h-ico">${icon('people', { size: 16 })}</span>${title}
         ${regions ? `<span class="tabs" role="tablist">
           <button role="tab" class="on" data-tab="sectores" aria-selected="true">Sectores</button>
           <button role="tab" data-tab="mapa" aria-selected="false">Mapa del Perú</button>
@@ -44,7 +45,7 @@ export function peoplePanel(moods, { regions = null, title = 'Cómo lo vive la g
         <div class="sectors">${moods.map(s => `
           <div class="sector" title="${s.name}: ${MOOD_LABEL[s.mood + 2]}">${face(s.mood, 38)}<small>${s.short}</small></div>`).join('')}
         </div>
-        <blockquote class="voice">“${sectorVoice(v)}” <cite>— ${v.who}</cite></blockquote>
+        <blockquote class="voice bubble">“${sectorVoice(v)}” <cite>— ${v.who}</cite></blockquote>
       </div>
       ${regions ? `<div class="tab-pane" data-pane="mapa" hidden>${peruMap(regions, { size: 'sm' })}</div>` : ''}
     </section>`;

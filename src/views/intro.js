@@ -1,4 +1,5 @@
 import { building, transmission, cycle, money, shield } from './art.js';
+import { icon } from './icons.js';
 
 export function renderTitle(root, { story, record, settings, onTutorial, onStory, onFree, onIntro, onSettings }) {
     root.innerHTML = `
@@ -10,13 +11,13 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
         <p>Siéntate en el Directorio del BCR. Enfrenta la hiperinflación de 1990, la crisis de 2008, El Niño costero, la pandemia y la inflación de 2022. ¿Harías lo mismo que el BCRP?</p>
         <div class="modes">
           <button class="mode ${story.tutorialDone ? '' : 'primary'}" data-tutorial>
-            <strong>Tutorial</strong><small>3 turnos guiados · 5 minutos</small>${story.tutorialDone ? '<span class="pill good">Completado</span>' : '<span class="pill info">Empieza aquí</span>'}
+            <span class="mode-ico">${icon('cap', { size: 22 })}</span><strong>Tutorial</strong><small>3 turnos guiados · 5 minutos</small>${story.tutorialDone ? '<span class="pill good">Completado</span>' : '<span class="pill info">Empieza aquí</span>'}
           </button>
           <button class="mode ${story.tutorialDone ? 'primary' : ''}" data-story>
-            <strong>Modo Historia</strong><small>5 capítulos de la historia monetaria del Perú</small>
+            <span class="mode-ico">${icon('book', { size: 22 })}</span><strong>Modo Historia</strong><small>5 capítulos de la historia monetaria del Perú</small>
           </button>
           <button class="mode" data-free>
-            <strong>Modo Libre</strong><small>Un mandato de 3 años con eventos al azar</small>
+            <span class="mode-ico">${icon('dice', { size: 22 })}</span><strong>Modo Libre</strong><small>Un mandato de 3 años con eventos al azar</small>
           </button>
         </div>
         ${record.played ? `<p class="record">Modo libre: ${record.played} mandatos · ratificado ${record.reappointed} · mejor puntaje ${record.bestScore}</p>` : ''}

@@ -14,6 +14,7 @@ import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
+import { icon, KIND_ICON, hawk, dove, bust } from './icons.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -28,10 +29,10 @@ export const GAME_OVER = {
 };
 
 /** Medidor con zona sana; `pos`, `zone` y `danger` en 0–1 sobre la escala. */
-function meter({ id, label, term, display, pos, zone, danger, tone, sub }) {
+function meter({ id, label, term, ico, display, pos, zone, danger, tone, sub }) {
     return `
     <div class="meter ${tone}" id="${id}">
-      <div class="meter-top"><span class="kpi-label">${label} ${help(term)}</span><strong class="meter-val num">${display}</strong></div>
+      <div class="meter-top"><span class="kpi-label"><span class="meter-ico">${icon(ico, { size: 16 })}</span>${label} ${help(term)}</span><strong class="meter-val num">${display}</strong></div>
       <div class="meter-track">
         ${zone ? `<span class="meter-zone" style="left:${zone[0] * 100}%;width:${(zone[1] - zone[0]) * 100}%"></span>` : ''}
         ${danger ? `<span class="meter-danger" style="left:${danger[0] * 100}%;width:${(danger[1] - danger[0]) * 100}%"></span>` : ''}
@@ -49,30 +50,30 @@ function meters(m) {
     const healthy = [m.params.potentialGrowth - 1.5, m.params.potentialGrowth + 1.5];
     return [
         meter({
-            id: 'm-infl', label: 'Inflación', term: 'inflacion', display: pct(s.inflation),
+            id: 'm-infl', label: 'Inflación', term: 'inflacion', ico: 'cart', display: pct(s.inflation),
             pos: inflScale(s.inflation), zone: [inflScale(PARAMS.bandMin), inflScale(PARAMS.bandMax)],
             tone: inBand(s.inflation) ? 'good' : 'bad', sub: `Meta 1%–3% · pierdes sobre ${L.inflation}%`
         }),
         meter({
-            id: 'm-growth', label: 'Crecimiento PBI', term: 'pbi', display: pct(s.growth),
+            id: 'm-growth', label: 'Crecimiento PBI', term: 'pbi', ico: 'factory', display: pct(s.growth),
             pos: growthScale(s.growth), zone: [growthScale(healthy[0]), growthScale(healthy[1])],
             tone: s.growth < 0 ? 'bad' : s.growth < healthy[0] || s.growth > healthy[1] + 1 ? 'warn' : 'good',
             sub: `Potencial ~${pct(m.params.potentialGrowth)}${L.growth > -12 ? ` · pierdes bajo ${L.growth}%` : ''}`
         }),
         meter({
-            id: 'm-cred', label: 'Credibilidad', term: 'credibilidad', display: `${Math.round(s.credibility)}`,
+            id: 'm-cred', label: 'Credibilidad', term: 'credibilidad', ico: 'handshake', display: `${Math.round(s.credibility)}`,
             pos: s.credibility / 100, danger: [0, L.credibility / 100],
             tone: s.credibility >= 60 ? 'good' : s.credibility >= 35 ? 'warn' : 'bad', sub: `Expectativas: ${pct(s.expectations)} · pierdes bajo ${L.credibility}`
         }),
         meter({
-            id: 'm-press', label: 'Congreso', term: 'autonomia',
+            id: 'm-press', label: 'Congreso', term: 'autonomia', ico: 'congress',
             display: `<span class="congress-val">${face(congressMood(m.pressure).mood, 26)}${congressMood(m.pressure).label}</span>`,
             pos: m.pressure / 100, danger: [0.8, 1],
             tone: m.pressure < 50 ? 'good' : m.pressure < 80 ? 'warn' : 'bad',
             sub: `Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ' · te cita desde 65' : ''} · pierdes en 100`
         }),
         ...(m.fx ? [meter({
-            id: 'm-fx', label: 'Dólar', term: 'intervencion', display: `S/ ${m.fx.rate.toFixed(3)}`,
+            id: 'm-fx', label: 'Dólar', term: 'intervencion', ico: 'dollar', display: `S/ ${m.fx.rate.toFixed(3)}`,
             pos: m.fx.reserves / (m.fx.initialReserves * 1.3), danger: [0, 0.3 / 1.3],
             tone: Math.abs(m.fx.lastDep) < 2 && m.fx.reserves > 0.5 * m.fx.initialReserves ? 'good' : Math.abs(m.fx.lastDep) < 4 ? 'warn' : 'bad',
             sub: `Reservas US$ ${m.fx.reserves.toFixed(1)} mil M${m.fx.lastDep ? ` · ${m.fx.lastDep > 0 ? '▲' : '▼'} ${Math.abs(m.fx.lastDep).toFixed(1)}% el trimestre` : ''}`
@@ -82,7 +83,7 @@ function meters(m) {
 
 export function avatar(who) {
     const c = CHARACTERS[who] ?? CHARACTERS.analista;
-    return `<span class="avatar" style="background:${c.color}">${c.initials}</span>`;
+    return `<span class="avatar" style="--c:${c.color}" title="${c.name}">${bust(who in CHARACTERS ? who : 'analista', c.color, 52)}</span>`;
 }
 
 function eventCard(e) {
@@ -94,9 +95,9 @@ function eventCard(e) {
             : '';
     const kind = { demanda: 'Choque de demanda', oferta: 'Choque de oferta', politica: 'Presión política', externo: 'Choque externo', calma: 'Sin sobresaltos' }[e.kind] ?? 'Coyuntura';
     return `
-    <section class="card event" id="event">
-      <div class="event-head">${avatar(e.who)}<div><small>${c.name}</small><h3>${e.title}</h3></div><span class="pill info">${kind}</span></div>
-      <blockquote>“${e.quote}”</blockquote>
+    <section class="card event kind-${e.kind ?? 'calma'}" id="event">
+      <div class="event-head">${avatar(e.who)}<div><small>${c.name}</small><h3>${e.title}</h3></div><span class="pill info">${icon(KIND_ICON[e.kind] ?? 'globe', { size: 14 })}${kind}</span></div>
+      <blockquote class="bubble">“${e.quote}”</blockquote>
       ${ask ? `<div class="ask">${ask}</div>` : ''}
     </section>`;
 }
@@ -107,8 +108,7 @@ function advisorCard(kind, a, selected) {
     const on = Math.abs(a.move - selected) < 1e-9;
     return `
     <button class="advisor ${kind}${on ? ' on' : ''}" data-follow="${a.move}">
-      <span class="adv-top"><strong>${name}</strong><span class="adv-move num">${moveLabel(a.move)}</span></span>
-      <small>${tag}</small>
+      <span class="adv-top"><span class="adv-bird">${kind === 'hawk' ? hawk : dove}</span><span class="adv-name"><strong>${name}</strong><small>${tag}</small></span><span class="adv-move num">${moveLabel(a.move)}</span></span>
       <span class="adv-why">${a.why}</span>
     </button>`;
 }
@@ -147,8 +147,8 @@ function missionBar(m, opts) {
         : [`inflación entre 1% y 3% (${m.scenario.reappoint?.minInBand ?? 9} de ${m.turns} trimestres y al final)`, 'sin hundir la economía', 'que el Congreso no te saque'];
     return `
     <div class="mission" role="note">
-      <span class="mission-role"><strong>Tú diriges el BCR.</strong> Decides la tasa${m.fx ? ' y cuándo vender o comprar dólares' : ''}.</span>
-      <span class="mission-goal"><strong>Tu objetivo:</strong> ${goals.map(g => g.charAt(0).toLowerCase() + g.slice(1)).join(' · ')}.</span>
+      <span class="mission-role"><span class="mission-ico">${icon('user', { size: 16 })}</span><strong>Tú diriges el BCR.</strong> Decides la tasa${m.fx ? ' y cuándo vender o comprar dólares' : ''}.</span>
+      <span class="mission-goal"><span class="mission-ico">${icon('target', { size: 16 })}</span><strong>Tu objetivo:</strong> ${goals.map(g => g.charAt(0).toLowerCase() + g.slice(1)).join(' · ')}.</span>
     </div>`;
 }
 
@@ -199,6 +199,7 @@ export function playScenario(root, scenario, opts) {
     // El tutorial siempre va en fácil y sin reloj.
     const diff = opts.difficulty ? { difficulty: opts.difficulty, ...DIFFICULTIES[opts.difficulty] } : getSettings();
     let move = 0;
+    let shownRate = null;   // para animar el número cuando cambia la tasa elegida
     let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
@@ -246,14 +247,14 @@ export function playScenario(root, scenario, opts) {
               ${tip ? `<div class="tip"><strong>Consejo:</strong> ${tip}</div>` : ''}
               ${eventCard(m.event)}
               <section class="card" id="debate">
-                <h3>Debate del Directorio <span class="sub">Toca una propuesta para seguirla</span></h3>
+                <h3><span class="h-ico">${icon('chat', { size: 16 })}</span>Debate del Directorio <span class="sub">Toca una propuesta para seguirla</span></h3>
                 <div class="advisors"></div>
               </section>
               ${peoplePanel(lastPeople, { regions: lastRegions })}
             </div>
             <div class="col">
               <section class="card" id="projection">
-                <h3>Inflación y proyección a un año <span class="sub">Según la tasa que elijas</span></h3>
+                <h3><span class="h-ico">${icon('telescope', { size: 16 })}</span>Inflación y proyección a un año <span class="sub">Según la tasa que elijas</span></h3>
                 <div class="fan"></div>
               </section>
               <section class="card decision" id="decision"></section>
@@ -408,12 +409,12 @@ export function playScenario(root, scenario, opts) {
         const el = root.querySelector('#decision');
         el.innerHTML = `
           <div class="current">
-            <div><div class="from">Nueva tasa de referencia ${help('tasa')}</div><div class="big num">${pct(rate, 2)}</div></div>
+            <div><div class="from">Nueva tasa de referencia ${help('tasa')}</div><div class="big num${shownRate !== null && shownRate !== rate ? ' bump' : ''}">${pct(rate, 2)}</div></div>
             <div class="from" style="text-align:right">Actual: <strong class="num">${pct(s.rate, 2)}</strong><br>
               En un año: <strong class="num ${endOk ? 'txt-good' : 'txt-bad'}">${pct(end.inflation)}</strong> inflación, <strong class="num">${pct(end.growth)}</strong> PBI</div>
           </div>
           <div class="steps" style="grid-template-columns:repeat(${m.moves.length},1fr)" role="radiogroup" aria-label="Cambio de tasa">
-            ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}>${moveLabel(v)}<small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
+            ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" data-dir="${Math.sign(v)}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}><span class="step-main">${v === 0 ? icon('equal', { size: 16 }) : `${icon(v > 0 ? 'up' : 'down', { size: 14 })}${moveLabel(v)}`}</span><small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
           ${m.fx ? fxBlock(m, move, sell, diff) : ''}
           ${tools}
@@ -426,8 +427,9 @@ export function playScenario(root, scenario, opts) {
                 pressHint.replace(/^ · /, ''),
                 rate <= m.minRate + 1e-9 ? 'La tasa ya está en su piso (0.25%).' : ''
             ].filter(Boolean).join(' · ')}</span>
-            <button class="btn btn-primary" data-announce>Anunciar decisión <span class="kbd">Enter</span></button>
+            <button class="btn btn-primary btn-announce" data-announce>${icon('gavel', { size: 18 })}Anunciar decisión <span class="kbd">Enter</span></button>
           </div>`;
+        shownRate = rate;
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
         el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
