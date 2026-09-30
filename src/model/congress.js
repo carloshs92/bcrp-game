@@ -24,6 +24,11 @@ export const DECLARATIONS = [
         source: 'https://comunicaciones.congreso.gob.pe/noticias/ccongreso-aprueba-ley-que-protege-de-la-usura-a-consumidores-de-servicios-financieros/'
     },
     {
+        topic: 'tasa', year: 2020, context: 'debate sobre el congelamiento de deudas en la pandemia',
+        text: 'Dadas las circunstancias, y que los bancos vienen reprogramando las deudas, pero con altos intereses moratorios, propongo a ustedes que se modifique esta disposición.',
+        source: 'https://gestion.pe/economia/congreso-podemos-peru-ahora-plantea-congelar-por-120-dias-incluso-las-deudas-renegociadas-noticia/'
+    },
+    {
         topic: 'autonomia', year: 2026, context: 'sesión con el presidente del BCR, sobre el caso de la Reserva Federal',
         text: 'Eso ha ocurrido en Estados Unidos, eso lo ha hecho Donald Trump, es decir, limitar la autonomía de su entidad encargada de la política monetaria.',
         source: 'https://peru21.pe/economia/jpp-quiere-que-se-pueda-intervenir-la-autonomia-del-bcr/'
@@ -48,6 +53,10 @@ export const FOLLOW_UP = {
 };
 
 /**
+ * Preguntas de citaciones al BCR. `kind: 'real'` = pregunta textual; `kind: 'recreacion'` = la
+ * pregunta la redacta el juego, pero el episodio (`basis`) ocurrió y está documentado en `source`.
+ * La pantalla lo rotula de forma distinta para no hacer pasar una recreación por una cita.
+ *
  * Preguntas reales de citaciones al BCR. Cada una trae tres respuestas con estilos distintos:
  *  - tecnica: explica el mandato. Gana credibilidad, pero el Congreso se siente "sermoneado".
  *  - promesa: calma al Congreso comprometiendo tu próxima decisión (forward guidance).
@@ -55,7 +64,7 @@ export const FOLLOW_UP = {
  */
 export const QUESTIONS = [
     {
-        id: 'empleo-sueldo', year: 2024, context: 'Comisión de Presupuesto',
+        id: 'empleo-sueldo', kind: 'real', year: 2024, context: 'Comisión de Presupuesto',
         text: 'Aparte de ganar S/ 41 mil […], ¿cuáles han sido las obligaciones legales o iniciativas de parte del BCR para buscar apoyar el empleo en la población?',
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
         answers: [
@@ -65,7 +74,7 @@ export const QUESTIONS = [
         ]
     },
     {
-        id: 'empleo-digno', year: 2024, context: 'Comisión de Presupuesto',
+        id: 'empleo-digno', kind: 'real', year: 2024, context: 'Comisión de Presupuesto',
         text: '¿Qué rol debe jugar el BCR para impulsar una política que no solo genere empleo, sino que garantice que este sea digno, con salarios justos y con derechos laborales plenos?',
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
         answers: [
@@ -75,7 +84,7 @@ export const QUESTIONS = [
         ]
     },
     {
-        id: 'reservas-quien', year: 2024, context: 'Comisión de Presupuesto',
+        id: 'reservas-quien', kind: 'real', year: 2024, context: 'Comisión de Presupuesto',
         text: 'Constantemente, el país se pide préstamos internacionales […] pero nos manifiestan que el BCR tiene US$ 82 millones. ¿Quién utiliza estos fondos?',
         note: 'Las reservas del BCR superaban los US$ 80 mil millones, no millones.',
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
@@ -86,7 +95,7 @@ export const QUESTIONS = [
         ]
     },
     {
-        id: 'reservas-infraestructura', year: 2026, context: 'sesión con el presidente del BCR',
+        id: 'reservas-infraestructura', kind: 'real', year: 2026, context: 'sesión con el presidente del BCR',
         text: 'Nos gustaría que nos pueda explicar técnicamente y no doctrinariamente, por qué un país que concentra más del 30% del PBI en reserva no puede usar siquiera una fracción marginal para financiar infraestructura crítica sin poner en riesgo la estabilidad cambiaria.',
         source: 'https://peru21.pe/economia/jpp-quiere-que-se-pueda-intervenir-la-autonomia-del-bcr/',
         answers: [
@@ -96,13 +105,47 @@ export const QUESTIONS = [
         ]
     },
     {
-        id: 'inestabilidad', year: 2026, context: 'sesión de ratificación del presidente del BCR',
+        id: 'inestabilidad', kind: 'real', year: 2026, context: 'sesión de ratificación del presidente del BCR',
         text: '¿Cómo se resuelve la convivencia entre la estabilidad macroeconómica y la inestabilidad política?',
         source: 'https://www.infobae.com/peru/2026/09/03/tenso-momento-entre-senador-de-juntos-por-el-peru-y-julio-velarde-ha-hecho-el-trabajo-que-se-le-encomendo-y-punto/',
         answers: [
             { style: 'tecnica', text: 'Justamente para eso existe la autonomía del BCR: para separar la política monetaria del ciclo político. Así la moneda se mantiene estable aunque cambien los gobiernos.' },
             { style: 'promesa', text: 'Con más coordinación con el Congreso. Por eso le aseguro que no subiremos la tasa en el próximo trimestre.' },
             { style: 'evasiva', text: 'No creo que sea relevante ahora.' }
+        ]
+    },
+    // ---------- Recreaciones de episodios reales (no son citas textuales) ----------
+    {
+        id: 'congelar-deudas', kind: 'recreacion', year: 2020, context: 'Comisión de Economía',
+        basis: 'en la pandemia, la Comisión de Economía aprobó por unanimidad un dictamen para congelar deudas bancarias, y el BCR se opuso',
+        text: 'Las familias no pueden pagar sus créditos en plena cuarentena. ¿Por qué el BCR se opone a congelar las deudas?',
+        source: 'https://rpp.pe/economia/economia/bcr-proyecto-de-congelamiento-de-deudas-del-congreso-es-irresponsable-julio-velarde-banco-central-de-reserva-entidades-financieras-noticia-1296089',
+        answers: [
+            { style: 'tecnica', text: 'Congelar por ley todas las deudas haría que muchos dejen de pagar esperando la norma, y los bancos dejarían de prestar. La salida es reprogramar caso por caso, con garantías como Reactiva Perú.' },
+            { style: 'promesa', text: 'Entendemos la emergencia. No subiremos la tasa en el próximo trimestre y seguiremos inyectando liquidez.' },
+            { style: 'evasiva', text: 'Estamos revisando el proyecto con mucho detalle y enviaremos nuestra opinión técnica.' }
+        ]
+    },
+    {
+        id: 'topes-tasas', kind: 'recreacion', year: 2021, context: 'debate de la ley contra la usura',
+        basis: 'en 2021 el Congreso aprobó por insistencia la ley que obligó al BCR a fijar tasas máximas al crédito de consumo',
+        text: 'Los bancos cobran tasas de más de 100% a la gente humilde. ¿Por qué el BCR se opone a ponerles un tope?',
+        source: 'https://www.mef.gob.pe/es/funciones/833-estadisticas-de-deuda-publica/6982-ministro-mendoza-gobierno-observara-la-ley-contra-la-usura-bancaria-aprobada-por-insistencia-por-el-congreso',
+        answers: [
+            { style: 'tecnica', text: 'Porque un tope deja sin crédito formal a quienes más riesgo tienen, y los empuja al prestamista informal, que cobra mucho más. Es mejor más competencia y más transparencia en las tasas.' },
+            { style: 'promesa', text: 'Vamos a aplicar la ley con responsabilidad, y como señal no subiremos la tasa de referencia en el próximo trimestre.' },
+            { style: 'evasiva', text: 'Respetamos las decisiones del Congreso y cumpliremos la ley.' }
+        ]
+    },
+    {
+        id: 'dolar-sube', kind: 'recreacion', year: 2021, context: 'Comisión de Fiscalización',
+        basis: 'en 2021, con el dólar sobre S/ 4, el presidente del BCR fue a la Comisión de Fiscalización y los congresistas le preguntaron por el tipo de cambio',
+        text: 'El dólar ya pasó los cuatro soles y la gente está asustada. ¿Qué está haciendo el BCR para frenarlo?',
+        source: 'https://gestion.pe/economia/dolar-tipo-de-cambio-julio-velarde-repasa-aqui-todo-lo-que-dijo-sobre-el-futuro-del-billete-verde-en-la-comision-de-fiscalizacion-del-congreso-nndc-noticia/',
+        answers: [
+            { style: 'tecnica', text: 'Estamos vendiendo dólares para evitar saltos bruscos, pero no podemos fijar el precio: la presión viene del miedo por la incertidumbre política. Si esta baja, el sol se fortalecerá.' },
+            { style: 'promesa', text: 'Vamos a hacer todo lo necesario. Mientras tanto, no subiremos la tasa en el próximo trimestre para no golpear más la economía.' },
+            { style: 'evasiva', text: 'El tipo de cambio es flexible y lo determina el mercado.' }
         ]
     }
 ];

@@ -166,6 +166,9 @@ export const CHAPTERS = [
         initial: { rate: 2.25, outputGap: -0.3, core: 2.1, supply: -0.2, expectations: 2.1, credibility: 85 },
         pressure: 15,
         limits: { growth: -40, credibility: 15 },
+        citations: true,
+        citationYears: [2020, 2020],
+        scriptedCitations: { 2: 'congelar-deudas' },
         tools: [{
             id: 'reactiva', name: 'Reactiva Perú', uses: 1,
             desc: 'Créditos para que las empresas paguen sueldos y proveedores, con garantía del Estado. Sostiene la demanda durante 2 trimestres.',
@@ -213,6 +216,9 @@ export const CHAPTERS = [
         initial: { rate: 0.25, outputGap: 0.5, core: 2.2, supply: 1.0, expectations: 2.5, credibility: 80 },
         pressure: 20,
         limits: { inflation: 12, credibility: 10 },
+        citations: true,
+        citationYears: [2021, 2023],
+        scriptedCitations: { 1: 'dolar-sube' },
         // Tipo de cambio promedio de jun. 2021 y RIN aprox. en US$ (BCRPData).
         fx: { rate: 3.910, reserves: 71 },
         script: [

@@ -277,9 +277,9 @@ export function playScenario(root, scenario, opts) {
           <div class="citation">
             <div class="breaking-tag">CITACIÓN</div>
             <h2>El Congreso cita al Directorio del BCR</h2>
-            <p class="lead">Estás molestando a los congresistas y te piden explicaciones. Responde con cuidado: lo que digas aquí también lo escuchan los mercados.</p>
+            <p class="lead">${m.pressure >= 65 ? 'Estás molestando a los congresistas y te piden explicaciones.' : 'El Congreso debate un tema urgente y quiere escuchar al BCR.'} Responde con cuidado: lo que digas aquí también lo escuchan los mercados.</p>
             <div class="question">
-              <small>Pregunta real hecha en el Congreso (${q.year}, ${q.context})</small>
+              <small>${q.kind === 'recreacion' ? `Recreación basada en un hecho real (${q.year}): ${q.basis}` : `Pregunta real hecha en el Congreso (${q.year}, ${q.context})`}</small>
               <p>“${q.text}”</p>
               ${q.note ? `<span class="q-note">Dato: ${q.note}</span>` : ''}
             </div>

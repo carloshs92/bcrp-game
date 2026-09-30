@@ -52,6 +52,29 @@ test('la respuesta técnica gana credibilidad y molesta más al Congreso', () =>
     assert.ok(after.pressure > before.pressure);
 });
 
-test('los capítulos históricos no citan con preguntas de otra época', () => {
-    for (const q of QUESTIONS) assert.ok(q.year >= 2024);
+test('toda pregunta está rotulada como real o recreación, y las recreaciones explican el hecho', () => {
+    for (const q of QUESTIONS) {
+        assert.ok(['real', 'recreacion'].includes(q.kind), q.id);
+        if (q.kind === 'recreacion') assert.ok(q.basis?.length > 20, q.id);
+    }
+});
+
+test('capítulos: la citación guionada ocurre en su trimestre y solo con preguntas de la época', async () => {
+    const { CHAPTER_BY_ID } = await import('../src/model/history.js');
+    const ch = CHAPTER_BY_ID['pandemia-2020'];
+    const m = new Mandate(1, ch);
+    m.decide(1.25); m.decide(0.25);
+    assert.equal(m.congress.pending?.id, 'congelar-deudas');
+    const ch2 = CHAPTER_BY_ID['inflacion-2022'];
+    const m2 = new Mandate(1, ch2);
+    m2.decide(1);
+    assert.equal(m2.congress.pending?.id, 'dolar-sube');
+    // Nunca una pregunta posterior al capítulo.
+    for (let seed = 1; seed <= 30; seed++) {
+        const x = new Mandate(seed, ch2);
+        while (!x.isOver) {
+            if (x.congress.pending) { assert.ok(x.congress.pending.year <= 2023); x.answerCitation(0); }
+            x.decide(x.state.rate + 0.5, 0);
+        }
+    }
 });

@@ -460,8 +460,19 @@ export default class Mandate {
     /** Si el Congreso está molesto, te cita (como mucho una vez cada 3 turnos). */
     maybeCite() {
         const c = this.congress;
-        if (!this.scenario.citations || this.reference || this.pressure < 65 || this.quarter - c.lastCitation < 3) return;
-        const pool = QUESTIONS.filter(q => !c.used.has(q.id) && q.year <= this.year);
+        if (this.reference) return;
+        // Citaciones guionadas: episodios reales que ocurrieron en ese momento del capítulo.
+        const scripted = this.scenario.scriptedCitations?.[this.quarter];
+        if (scripted && !c.used.has(scripted)) {
+            c.used.add(scripted);
+            c.lastCitation = this.quarter;
+            c.pending = QUESTIONS.find(q => q.id === scripted);
+            return;
+        }
+        if (!this.scenario.citations || this.pressure < 65 || this.quarter - c.lastCitation < 3) return;
+        // Solo preguntas de la época del escenario (sin anacronismos).
+        const [from, to] = this.scenario.citationYears ?? [0, this.year];
+        const pool = QUESTIONS.filter(q => !c.used.has(q.id) && q.year >= from && q.year <= to);
         if (!pool.length) return;
         const q = pool[Math.floor(this.crng() * pool.length)];
         c.used.add(q.id);
