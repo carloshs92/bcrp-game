@@ -12,6 +12,12 @@ export function coach(steps) {
     return queue;
 }
 
+/** Si el elemento vive en una sección cerrada del turno, abre esa sección antes de señalarlo. */
+function revealPanel(el) {
+    const panel = el?.closest('[data-panel]');
+    if (panel?.hidden) document.querySelector(`[data-goto="${panel.dataset.panel}"][role="tab"]`)?.click();
+}
+
 function runCoach(steps) {
     return new Promise(resolve => {
         const shade = document.createElement('div');
@@ -56,6 +62,7 @@ function runCoach(steps) {
                     <button class="btn btn-primary" data-next>${last ? 'Entendido' : 'Siguiente'}</button>
                 </div>`;
             const el = step.target ? document.querySelector(step.target) : null;
+            revealPanel(el);
             el?.scrollIntoView({ block: 'nearest', behavior: 'instant' });
             place();
             tip.querySelector('[data-next]').focus();

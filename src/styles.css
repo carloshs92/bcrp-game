@@ -756,8 +756,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes callout { 0%, 70%, 100% { box-shadow: 0 0 0 0 rgba(27, 54, 93, .0); } 80% { box-shadow: 0 0 0 6px rgba(27, 54, 93, .18); } }
 
 /* Barra de misión con íconos. */
-.mission-role, .mission-goal { display: inline-flex; align-items: center; gap: 6px; }
-.mission-ico { display: inline-grid; place-items: center; color: #8a6400; }
+.mission-ico { display: inline-block; vertical-align: -3px; margin-right: 4px; color: #8a6400; }
 
 /* Entrada escalonada de las tarjetas al comenzar cada turno. */
 .mandate .meter, .mandate .card { animation: rise .45s cubic-bezier(.2, .8, .2, 1) backwards; }
@@ -880,3 +879,70 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cdelta em { font-style: normal; font-size: 14px; }
 .cdelta.good em { color: var(--good); }
 .cdelta.bad em { color: var(--bad); }
+
+/* ================= Turno por secciones ================= */
+.turn-nav { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.turn-nav button {
+    position: relative; display: flex; align-items: center; gap: 10px; text-align: left; min-width: 0;
+    padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--surface);
+    box-shadow: var(--shadow); transition: transform .12s, border-color .15s, background .15s;
+}
+.turn-nav button:hover { transform: translateY(-2px); border-color: var(--navy-2); }
+.turn-nav button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.tn-ico { flex: none; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--info-bg); color: var(--navy-2); }
+.turn-nav button[data-goto="estado"] .tn-ico { background: #f1e9fb; color: #6b3fa0; }
+.turn-nav button[data-goto="directorio"] .tn-ico { background: #e3f3f5; color: #0f7c8a; }
+.turn-nav button[data-goto="anuncio"] .tn-ico { background: var(--warn-bg); color: var(--warn); }
+.turn-nav button.on .tn-ico { background: rgba(255, 255, 255, .16); color: #fff; }
+.tn-text { display: grid; min-width: 0; line-height: 1.2; }
+.tn-text small { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.tn-text strong { font-size: 15px; color: var(--navy); }
+.tn-sum { font-size: 12.5px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.turn-nav button.on small, .turn-nav button.on strong, .turn-nav button.on .tn-sum { color: #fff; }
+.turn-nav button.on small { opacity: .75; }
+.turn-nav button.unseen::after {
+    content: ''; position: absolute; top: 8px; right: 8px; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--red); box-shadow: 0 0 0 2px var(--surface); animation: blink 1.6s ease-in-out infinite;
+}
+.turn-panel { display: grid; gap: 14px; animation: rise .3s cubic-bezier(.2, .8, .2, 1); }
+.turn-panel[hidden] { display: none; }
+.panel-next { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.panel-next .btn-primary { display: inline-flex; align-items: center; gap: 6px; }
+.panel-next .btn-primary .ico { transform: rotate(-90deg); }
+.announce-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+.last-paper .lp-head { font-family: Georgia, 'Times New Roman', serif; font-size: 19px; font-weight: 700; color: var(--ink); line-height: 1.25; }
+
+/* Sección "El Estado" */
+.state-card .h-ico.cg { background: #f1e9fb; color: #6b3fa0; }
+.cg-mood { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.cg-body { flex: 1; display: grid; gap: 4px; }
+.cg-body strong { font-size: 20px; color: var(--ink); }
+.cg-body small { font-size: 12px; color: var(--muted); }
+.cg-fill { background: #7a2e8e !important; }
+.cg-quote { margin: 8px 0 10px 8px !important; font-style: italic; }
+.cg-quote cite { display: block; font-style: normal; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.laws { display: grid; gap: 6px; margin-top: 8px; }
+.laws small { font-size: 12px; font-weight: 700; color: var(--muted); }
+.law { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 4px 10px; justify-self: start; }
+.gov { display: flex; gap: 12px; align-items: flex-start; }
+.gov small { color: var(--muted); font-size: 12.5px; }
+.gov p { margin: 6px 0 0; color: var(--ink-2); font-size: 14.5px; }
+.gov .bubble { position: relative; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; margin: 8px 0 0; font-style: italic; }
+.state-ask { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--warn) !important; }
+.cg-quote.bubble { position: relative; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 14px; }
+
+@media (max-width: 960px) {
+    .announce-grid { grid-template-columns: minmax(0, 1fr); }
+    .announce-grid .mini-fan { order: -1; padding: 10px 14px; }
+    .mini-fan h3 { margin-bottom: 4px; }
+    .mini-fan .fan svg { max-height: 190px; }
+}
+@media (max-width: 640px) {
+    .turn-nav { gap: 6px; }
+    .turn-nav button { flex-direction: column; gap: 4px; padding: 8px 4px; text-align: center; }
+    .tn-ico { width: 34px; height: 34px; }
+    .tn-text small, .tn-sum { display: none; }
+    .tn-text strong { font-size: 11.5px; }
+    .panel-next { justify-content: stretch; }
+    .panel-next .btn { flex: 1; }
+}

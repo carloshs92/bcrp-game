@@ -1,6 +1,6 @@
 # Sol Firme · Roadmap
 
-_Actualizado: 30 de septiembre de 2026_
+_Actualizado: 30 de septiembre de 2026 · versión compartible en Claude Docs_
 
 Sol Firme ya es fiel a la realidad peruana (**8.5/10**), pero todavía no es divertido (**4/10**). Este roadmap busca subir la diversión sin sacrificar realismo. La idea central es pasar de "elegir un número" a "armar una estrategia".
 
@@ -42,7 +42,52 @@ Por dentro, el juego es **una sola decisión repetida doce veces**: elegir entre
 1. **El encaje.** Es el instrumento más peruano (2008, la desdolarización de 2013–15) y hoy no existe en el juego.
 2. **El comunicado.** El BCRP no solo mueve la tasa, también *dice* cosas, y eso mueve las expectativas desde el primer día.
 3. **Ruido político.** Seis presidentes entre 2016 y 2023, vacancias y crisis de gabinete mueven el dólar; casi no aparecen.
-4. **Informalidad (~70%).** Explica por qué la tasa llega poco a la bodega y a la combi.
+4. **Informalidad.** Siete de cada diez trabajadores son informales (ver abajo).
+
+## Informalidad: verificada
+
+- **La cifra es cierta:** el empleo informal fue **70.2% en 2025** (12.3 de 17.6 millones de ocupados): 94.8% en zonas rurales y 64.5% en las urbanas; 72.7% en mujeres y 68.2% en hombres. Fuente: EPEN del INEI, reportada por [Infobae (abril 2026)](https://www.infobae.com/peru/2026/04/01/inei-confirma-que-7-de-cada-10-trabajadores-en-peru-son-informales-pierden-acceso-a-cts-seguro-y-pension/).
+- **No es una ventaja, es un colchón.** El BCRP ([Carrera y Razzo, DT 2026-001](https://ideas.repec.org/p/rbp/wpaper/dt-2026-001.html)) encuentra que el empleo informal absorbe los desequilibrios del mercado laboral y atenúa la transmisión de presiones inflacionarias. Ignorarlo sobrestima los riesgos de inflación y el poder de la política monetaria.
+- **En el juego (Fase C):**
+  - transmisión más débil en las regiones más informales;
+  - un indicador de **precariedad** que sube en las recesiones aunque el desempleo no suba;
+  - voces nuevas: el ambulante, la mototaxista, el minero artesanal;
+  - una entrada en el glosario: "¿Por qué la tasa no llega a todos?".
+
+## Diseño: el comunicado
+
+Segunda decisión de cada turno: el tono del anuncio. Mueve las expectativas ese mismo turno.
+
+| Tono | Efecto inmediato | Compromiso |
+|---|---|---|
+| Halcón | Bajan las expectativas (más cuanto mayor la credibilidad); el dólar se calma; el Congreso se molesta un poco. | No bajar la tasa el próximo turno. |
+| Neutral | Ninguno. | Ninguno. |
+| Paloma | Mejora el ánimo de mypes y deudores; las expectativas suben un poco. | No subir la tasa el próximo turno. |
+
+- Cumplir lo anunciado: +2 de credibilidad. Romperlo: −5 a −8.
+- El efecto escala con la credibilidad: con 80 puntos, un comunicado halcón vale casi un alza de 25 pb.
+- El titular del diario cita el comunicado.
+
+## Diseño: la caja de herramientas histórica
+
+Cada capítulo desbloquea el instrumento que el BCRP creó en esa época; lo desbloqueado queda disponible en el modo libre. Por turno se usan tres espacios: tasa, comunicado y una herramienta.
+
+| Herramienta | Se gana en | Qué hace | Costo | Recarga |
+|---|---|---|---|---|
+| Comité de Caja | 1990 | Prohíbe emitir para financiar al Tesoro. | Golpe a los estatales | Permanente |
+| Metas de inflación | Interludio 2002 | Activa el comunicado y ancla expectativas. | Exige cumplir la meta | Permanente |
+| Encaje en soles | 2008 | Inyecta o retira liquidez sin mover la tasa. | Efecto en 1–2 turnos | 2 turnos |
+| Encaje en dólares | 2008 | Frena el crédito en dólares. | Enojo de los deudores en US$ | 2 turnos |
+| Repos de liquidez | 2008 | Presta soles a los bancos en una crisis. | Si se abusa, sube la inflación esperada | 1 turno |
+| Desdolarización | Interludio 2015 | Baja para siempre el traspaso del dólar a los precios. | Rinde recién a los 3 turnos | Una vez |
+| Swaps cambiarios | 2021–23 | Defiende el sol sin vender reservas. | Costo en el balance del BCR | 2 turnos |
+| Reactiva Perú | 2020 | Garantiza créditos para pagar sueldos. | Riesgo de impago | Una vez |
+
+Las fechas de cada instrumento se verifican contra las memorias del BCRP antes de escribir el texto de cada carta.
+
+## Hecho: pantalla del turno por secciones
+
+El turno se recorre en cuatro secciones con un clic (o las teclas 1–4): **Noticias y gente**, **El Estado** (Congreso y MEF), **El Directorio** (debate y proyección) y **El anuncio** (tasa, dólares, ganadores y perdedores, con la proyección al lado). Cada pestaña muestra una línea de resumen y un punto rojo si aún no se vio.
 
 ## Roadmap por fases
 

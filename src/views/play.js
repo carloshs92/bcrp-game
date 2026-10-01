@@ -9,7 +9,7 @@ import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
 import { rateTradeoff } from '../game/people.js';
-import { congressMood, BILL_RESPONSES, ANSWER_EFFECTS } from '../model/congress.js';
+import { congressMood, BILL_RESPONSES, ANSWER_EFFECTS, BILLS } from '../model/congress.js';
 import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';
@@ -200,6 +200,14 @@ function effectChips({ pressure = 0, credibility = 0, extra = '' }) {
     return `<span class="fx-chips">${chip('congress', 'Enojo', pressure, false)}${chip('handshake', 'Credibilidad', credibility, true)}${extra ? `<span class="fx-chip warn">${extra}</span>` : ''}</span>`;
 }
 
+/** Las cuatro secciones del turno. */
+const SECTIONS = [
+    { id: 'noticias', ico: 'megaphone', kicker: 'Qué pasó', title: 'Noticias y gente' },
+    { id: 'estado', ico: 'congress', kicker: 'Qué te piden', title: 'El Estado' },
+    { id: 'directorio', ico: 'chat', kicker: 'Qué opinan', title: 'El Directorio' },
+    { id: 'anuncio', ico: 'gavel', kicker: 'Qué decides', title: 'El anuncio' }
+];
+
 /** Grupos del cuadro "quién gana y quién pierde": ícono y nombre corto. */
 const GROUPS = {
     ahorristas: ['piggy', 'Ahorristas'], jubilados: ['elder', 'Jubilados'], familias: ['home', 'Familias'],
@@ -249,6 +257,8 @@ export function playScenario(root, scenario, opts) {
             const i = m.moves.indexOf(move) + (e.key === 'ArrowRight' ? 1 : -1);
             if (i >= 0 && i < m.moves.length) { move = m.moves[i]; updateDecision(); }
             e.preventDefault();
+        } else if (/^[1-4]$/.test(e.key) && !e.target.closest('input, textarea')) {
+            goTo(SECTIONS[Number(e.key) - 1].id);
         } else if (e.key === 'Enter' && !e.target.closest('button')) {
             announce();
         }
@@ -256,6 +266,77 @@ export function playScenario(root, scenario, opts) {
     document.addEventListener('keydown', onKey);
     const cleanup = () => { document.removeEventListener('keydown', onKey); timer.stop(); };
     const exit = () => { cleanup(); closeModal(); opts.onExit(); };
+
+    // El turno se recorre en cuatro secciones, en el orden en que piensa el Directorio.
+    let section = 'noticias';
+    let seen = new Set(['noticias']);
+    let lastRec = null;
+
+    const sectionSummary = id => {
+        if (id === 'noticias') return m.event.title;
+        if (id === 'estado') {
+            const asks = m.event.asks === 'bajar' ? ' · te piden bajar la tasa' : '';
+            return `Congreso ${congressMood(m.pressure).label.toLowerCase()}${asks}${m.congress.promise ? ' · promesa vigente' : ''}`;
+        }
+        if (id === 'directorio') {
+            const a = m.advisors();
+            return `Halcón ${moveLabel(a.hawk.move)} · Paloma ${moveLabel(a.dove.move)}`;
+        }
+        return `Tasa actual ${pct(m.state.rate, 2)}`;
+    };
+
+    const panelNext = next => {
+        const sec = SECTIONS.find(x => x.id === next);
+        return `<div class="panel-next">
+            ${next !== 'anuncio' ? '<button class="btn btn-ghost" data-goto="anuncio">Ir directo al anuncio</button>' : ''}
+            <button class="btn btn-primary" data-goto="${next}">Siguiente: ${sec.title} ${icon('down', { size: 16 })}</button>
+          </div>`;
+    };
+
+    const goTo = id => {
+        section = id;
+        seen.add(id);
+        root.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== id; });
+        root.querySelectorAll('[data-goto][role="tab"]').forEach(b => {
+            const on = b.dataset.goto === id;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on);
+            if (seen.has(b.dataset.goto)) b.classList.remove('unseen');
+        });
+        const nav = root.querySelector('.turn-nav');
+        if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    };
+
+    /** Sección "El Estado": cómo está el Congreso y qué pide el Gobierno. */
+    const statePanel = () => {
+        const cm = congressMood(m.pressure);
+        const laws = m.effects.filter(e => BILLS.some(b => b.id === e.id)).map(e => BILLS.find(b => b.id === e.id));
+        const ministro = CHARACTERS.ministro;
+        const gov = m.event.who === 'ministro'
+            ? `<blockquote class="bubble">“${m.event.quote}”</blockquote>${m.event.asks === 'bajar' ? `<p class="state-ask">${icon('down', { size: 14 })}Pide bajar la tasa. Si la subes: +${Math.round(m.event.pressure * CONGRESS.askWeight)} de enojo en el Congreso.</p>` : ''}`
+            : m.event.asks === 'bajar'
+                ? `<p>El Gobierno respalda el pedido de ${(CHARACTERS[m.event.who] ?? CHARACTERS.analista).name.toLowerCase()}: quiere una tasa más baja.</p>`
+                : '<p>Este trimestre el MEF no hace pedidos al BCR. Recuerda: el BCR es autónomo y no recibe órdenes del Gobierno.</p>';
+        return `
+        <div class="mandate-grid">
+          <section class="card state-card" id="congress-card">
+            <h3><span class="h-ico cg">${icon('congress', { size: 16 })}</span>El Congreso ${help('autonomia')}</h3>
+            <div class="cg-mood">${face(cm.mood, 64)}
+              <div class="cg-body"><strong>${cm.label}</strong>
+                <div class="meter-track"><span class="meter-danger" style="left:80%;width:20%"></span><span class="meter-fill cg-fill" style="width:${m.pressure}%"></span></div>
+                <small>Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ` · te cita desde ${CONGRESS.citeAt}` : ''} · en 100 piden tu salida</small>
+              </div>
+            </div>
+            ${lastRec?.declaration ? `<blockquote class="bubble cg-quote">“${lastRec.declaration.text}”<cite>Frase real de un congresista (${lastRec.declaration.year}, ${lastRec.declaration.context})</cite></blockquote>` : '<p class="quiet">Por ahora no hay declaraciones nuevas. No te confíes.</p>'}
+            ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre.</div>' : ''}
+            ${laws.length ? `<div class="laws"><small>Leyes en vigor que afectan la economía</small>${laws.map(b => `<span class="law">${icon(BILL_ICON[b.id] ?? 'scroll', { size: 14 })}${b.title.replace(/^Proyecto de ley: /, '')}</span>`).join('')}</div>` : ''}
+          </section>
+          <section class="card state-card">
+            <h3><span class="h-ico">${icon('scroll', { size: 16 })}</span>El Gobierno (MEF)</h3>
+            <div class="gov">${avatar('ministro')}<div><small>${ministro.name}</small>${gov}</div></div>
+          </section>
+        </div>`;
+    };
 
     const render = () => {
         const tip = opts.tips?.[m.quarter];
@@ -275,25 +356,51 @@ export function playScenario(root, scenario, opts) {
         ${missionBar(m, opts)}
         <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
           <div class="meters${m.fx ? ' five' : ''}">${meters(m)}</div>
-          <div class="mandate-grid">
-            <div class="col">
-              ${tip ? `<div class="tip"><strong>Consejo:</strong> ${tip}</div>` : ''}
-              ${eventCard(m.event)}
+          <nav class="turn-nav" role="tablist" aria-label="Secciones del turno">${SECTIONS.map((sec, i) => `
+            <button role="tab" data-goto="${sec.id}" aria-selected="${sec.id === section}" class="${sec.id === section ? 'on' : ''}${seen.has(sec.id) ? '' : ' unseen'}">
+              <span class="tn-ico">${icon(sec.ico, { size: 20 })}</span>
+              <span class="tn-text"><small>${i + 1} · ${sec.kicker}</small><strong>${sec.title}</strong><span class="tn-sum">${sectionSummary(sec.id)}</span></span>
+            </button>`).join('')}
+          </nav>
+          <section class="turn-panel" data-panel="noticias" ${section === 'noticias' ? '' : 'hidden'}>
+            <div class="mandate-grid">
+              <div class="col">
+                ${tip ? `<div class="tip"><strong>Consejo:</strong> ${tip}</div>` : ''}
+                ${eventCard(m.event)}
+                ${lastRec ? `<section class="card last-paper"><h3><span class="h-ico">${icon('book', { size: 16 })}</span>El diario del trimestre pasado</h3><p class="lp-head">${lastRec.headline}</p></section>` : ''}
+              </div>
+              <div class="col">${peoplePanel(lastPeople, { regions: lastRegions })}</div>
+            </div>
+            ${panelNext('estado')}
+          </section>
+          <section class="turn-panel" data-panel="estado" ${section === 'estado' ? '' : 'hidden'}>
+            ${statePanel()}
+            ${panelNext('directorio')}
+          </section>
+          <section class="turn-panel" data-panel="directorio" ${section === 'directorio' ? '' : 'hidden'}>
+            <div class="mandate-grid">
               <section class="card" id="debate">
                 <h3><span class="h-ico">${icon('chat', { size: 16 })}</span>Debate del Directorio <span class="sub">Toca una propuesta para seguirla</span></h3>
                 <div class="advisors"></div>
               </section>
-              ${peoplePanel(lastPeople, { regions: lastRegions })}
-            </div>
-            <div class="col">
               <section class="card" id="projection">
                 <h3><span class="h-ico">${icon('telescope', { size: 16 })}</span>Inflación y proyección a un año <span class="sub">Según la tasa que elijas</span></h3>
                 <div class="fan"></div>
               </section>
-              <section class="card decision" id="decision"></section>
             </div>
-          </div>
+            ${panelNext('anuncio')}
+          </section>
+          <section class="turn-panel" data-panel="anuncio" ${section === 'anuncio' ? '' : 'hidden'}>
+            <div class="mandate-grid announce-grid">
+              <section class="card decision" id="decision"></section>
+              <section class="card mini-fan">
+                <h3><span class="h-ico">${icon('telescope', { size: 16 })}</span>Así se vería la inflación</h3>
+                <div class="fan"></div>
+              </section>
+            </div>
+          </section>
         </main>`;
+        root.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { goTo(b.dataset.goto); music.click(); }));
         root.querySelector('[data-exit]').addEventListener('click', exit);
         root.querySelector('[data-glossary]').addEventListener('click', () => openGlossary());
         root.querySelectorAll('[data-term]').forEach(b => b.addEventListener('click', () => openGlossary(b.dataset.term)));
@@ -441,7 +548,8 @@ export function playScenario(root, scenario, opts) {
             updateDecision();
         }));
 
-        root.querySelector('.fan').innerHTML = fanChart({ history: m.history, projection: proj, total: m.turns, labels: m.labels().map(shortLabel) });
+        const fan = fanChart({ history: m.history, projection: proj, total: m.turns, labels: m.labels().map(shortLabel) });
+        root.querySelectorAll('.fan').forEach(f => { f.innerHTML = fan; });
 
         const hikeCost = scenario.hikePressure ?? 4;
         const pressHint = move > 0 ? ` · presión +${Math.round(move / 0.25 * hikeCost)}${m.event.asks === 'bajar' ? ` (+${Math.round(m.event.pressure * CONGRESS.askWeight)} por ignorar el pedido)` : ''}` : '';
@@ -501,6 +609,9 @@ export function playScenario(root, scenario, opts) {
         rec.timeout = timeout;
         lastPeople = rec.people;
         lastRegions = rec.regions;
+        lastRec = rec;
+        section = 'noticias';
+        seen = new Set(['noticias']);
         move = 0;
         const reveal = () => { if (!m.isOver) { render(); flashMeters(rec); } showNewspaper(rec); busy = false; };
         if (rec.surprise) {
