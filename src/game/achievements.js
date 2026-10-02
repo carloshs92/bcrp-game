@@ -39,6 +39,8 @@ export const ACHIEVEMENTS = [
     { id: 'mas-sol', icon: 'sun', name: 'Más sol que el sol', text: 'Completaste el programa de desdolarización.', check: c => (c.m?.fxPassMult ?? 1) < 1 },
     { id: 'pepe', icon: 'dollar', name: 'Pepe el cambista te quiere', text: 'Terminaste con el dólar casi igual que al inicio (±3%).', check: c => survived(c) && c.m?.fx && c.m.fxStart && Math.abs(c.m.fx.rate / c.m.fxStart - 1) <= 0.03 },
 
+    { id: 'chamba-formal', icon: 'briefcase', name: 'Chamba con planilla', text: 'Terminaste el mandato con menos informalidad que al inicio.', check: c => survived(c) && c.m?.informal != null && c.m.informal < c.m.informalBase - 0.5 },
+
     // Congreso
     { id: 'ni-roche', icon: 'congress', name: 'Te citaron y ni roche', text: 'Te citaron tres veces al Congreso y terminaste el mandato.', check: c => survived(c) && (c.m?.congress?.citations ?? 0) >= 3 },
     { id: 'al-filo', icon: 'flame', name: 'Al filo', text: 'El enojo del Congreso pasó de 90 y aun así terminaste el mandato.', check: c => survived(c) && (c.m?.stats?.maxPressure ?? 0) >= 90 },

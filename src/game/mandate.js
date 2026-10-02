@@ -70,6 +70,12 @@ export const BOARD = [
 ];
 export const BOARD_RULES = { tolerance: 0.5, majority: 4, unanimous: 1, split: -1, lost: -5, reach: 0.75 };
 
+/**
+ * Informalidad: 70.2% del empleo en 2025 (INEI). Según el BCRP (Carrera y Razzo, DT 2026-001), el empleo
+ * informal absorbe los desequilibrios del mercado laboral: en vez de desempleo, aparece chamba precaria.
+ */
+export const INFORMAL = { gapEffect: 0.6, recovery: 0.25, revert: 0.1, min: 62, max: 82 };
+
 /** Momento decisivo: margen frente al BCRP real y premio o castigo de credibilidad. */
 export const CLIMAX = { inflationSlack: 0.25, growthSlack: 1.0, reward: 6, penalty: 6 };
 
@@ -108,6 +114,7 @@ export function guidanceEffect(state, tone) {
 export const FREE_SCENARIO = {
     id: 'libre',
     board: true, // el Directorio vota tus propuestas
+    informal: 70.2, // % de empleo informal (INEI, EPEN 2025)
     title: 'Modo libre',
     turns: 12,
     startYear: 2027,
@@ -228,6 +235,9 @@ export default class Mandate {
             .map(t => ({ ...t, readyAt: 0, used: 0 }));
         this.lastTool = null;
         this.fxPassMult = 1; // baja para siempre con la desdolarización
+        // Informalidad: el colchón del mercado laboral. Sube cuando la economía crece bajo su potencial.
+        this.informal = scenario.informal ?? null;
+        this.informalBase = scenario.informal ?? null;
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
         this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
@@ -675,6 +685,14 @@ export default class Mandate {
         record.envy = envy;
         record.envyTo = envyTo;
         this.lastEnvy = envy;
+        if (this.informal !== null) {
+            const before = this.informal;
+            const gap = s.growth - this.params.potentialGrowth;
+            this.informal = clamp(before + INFORMAL.gapEffect * Math.max(0, -gap) - INFORMAL.recovery * Math.max(0, gap) + INFORMAL.revert * (this.informalBase - before), INFORMAL.min, INFORMAL.max);
+            record.informal = { before, after: this.informal };
+            record.informalUp = this.informal - before;
+            this.stats.maxInformal = Math.max(this.stats.maxInformal ?? 0, this.informal);
+        }
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
         const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];

@@ -358,6 +358,20 @@ const SECTIONS = [
     { id: 'anuncio', ico: 'gavel', kicker: 'Qué decides', title: 'El anuncio' }
 ];
 
+/** Informalidad: el colchón del mercado laboral peruano (y su costo: chamba sin derechos). */
+function informalCard(m, rec) {
+    const d = rec?.informal ? rec.informal.after - rec.informal.before : 0;
+    return `
+      <section class="card informal-card">
+        <h3><span class="h-ico">${icon('briefcase', { size: 16 })}</span>Empleo informal ${help('informalidad')}</h3>
+        <div class="inf-row"><strong class="num">${m.informal.toFixed(1)}%</strong>
+          ${Math.abs(d) >= 0.05 ? `<span class="${d > 0 ? 'txt-bad' : 'txt-good'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(1)} pp</span>` : ''}
+          <span class="inf-sub">de los trabajadores, sin contrato, seguro ni pensión</span></div>
+        <div class="meter-track"><span class="meter-fill" style="width:${m.informal}%"></span></div>
+        <p class="inf-note">${d > 0.3 ? 'La economía crece por debajo de su potencial: en vez de quedarse sin trabajo, la gente pasa a la chamba informal.' : d < -0.3 ? 'Con la economía creciendo, vuelve el empleo formal.' : 'Siete de cada diez trabajan en la informalidad: por eso la tasa llega con menos fuerza a la bodega y a la combi.'}</p>
+      </section>`;
+}
+
 /** Votación del Directorio (modo libre): 7 votos, necesitas 4. Una vez por turno puedes convencer a alguien cercano. */
 function boardBlock(m, move, convinced) {
     const ico = { tecnica: 'scale', halcon: 'up', prudente: 'equal', paloma: 'down', empleo: 'briefcase', veterano: 'book' };
@@ -550,7 +564,7 @@ export function playScenario(root, scenario, opts) {
                 ${eventCard(m.event)}
                 ${lastRec ? `<section class="card last-paper"><h3><span class="h-ico">${icon('book', { size: 16 })}</span>El diario del trimestre pasado</h3><p class="lp-head">${lastRec.headline}</p></section>` : ''}
               </div>
-              <div class="col">${peoplePanel(lastPeople, { regions: lastRegions })}</div>
+              <div class="col">${peoplePanel(lastPeople, { regions: lastRegions })}${m.informal !== null ? informalCard(m, lastRec) : ''}</div>
             </div>
             ${panelNext('estado')}
           </section>

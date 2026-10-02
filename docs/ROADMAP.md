@@ -90,6 +90,14 @@ Las fechas de cada instrumento se verifican contra las memorias del BCRP antes d
 - **Comunicado:** tono halcón, neutral o paloma; mueve expectativas según la credibilidad y compromete el turno siguiente. Con criterio, la reelección en simulación sube de 49% a 57%; hablar siempre como paloma la baja a 20%.
 - **Caja de herramientas:** encaje en soles (subir/bajar), encaje en dólares, repos, desdolarización y swaps cambiarios, cada una con efecto, costo, recarga y su historia real verificada ([Memoria BCRP 2008](https://www.bcrp.gob.pe/docs/Publicaciones/Memoria/2008/Memoria-BCRP-2008-5.pdf), [Memoria 2015](https://www.bcrp.gob.pe/docs/Publicaciones/Memoria/2015/memoria-bcrp-2015-5.pdf), [La República 2022 sobre 2021](https://larepublica.pe/economia/2022/01/07/bcrp-tuvo-la-mayor-intervencion-cambiaria-de-su-historia-us-175-millones), [Gestión 2017](https://gestion.pe/economia/mercados/bcr-reduce-encaje-soles-6-5-partir-abril-131584-noticia/)). Se ganan superando capítulos; usarlas con criterio sube la reelección ~8 puntos, usarlas todas sin criterio la baja.
 
+## Hecho (Fase C, octubre 2026)
+
+- **Directorio con votos** (modo libre y exprés), fiel al art. 86 de la Constitución: necesitas 4 de 7; puedes convencer a un director por turno; perder la votación cuesta credibilidad.
+- **Logros con humor peruano** en todos los modos, con vitrina en la portada: «Perú es clave», «Chamba es chamba», «A la firme», «Palabra de candidato», «Con yapa», «Ni un solo jalado»…
+- **Mandato exprés** de 6 turnos para jugar en el celular.
+- **Informalidad** (70.2%, INEI 2025): sube cuando la economía crece bajo su potencial; nuevas voces de chamba precaria. Por ahora es indicador y narrativa: no cambia el modelo macro.
+- Humor de fondo: dichos peruanos en la portada y frases mientras el país espera el anuncio.
+
 ## Hecho (Fase B, octubre 2026)
 
 - **Reacción en vivo:** tras anunciar, el país reacciona en segundos (Pepe y el dólar, un analista, la gente, el Congreso) antes del diario.
