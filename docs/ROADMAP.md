@@ -85,6 +85,11 @@ Cada capítulo desbloquea el instrumento que el BCRP creó en esa época; lo des
 
 Las fechas de cada instrumento se verifican contra las memorias del BCRP antes de escribir el texto de cada carta.
 
+## Hecho (Fase A, octubre 2026)
+
+- **Comunicado:** tono halcón, neutral o paloma; mueve expectativas según la credibilidad y compromete el turno siguiente. Con criterio, la reelección en simulación sube de 49% a 57%; hablar siempre como paloma la baja a 20%.
+- **Caja de herramientas:** encaje en soles (subir/bajar), encaje en dólares, repos, desdolarización y swaps cambiarios, cada una con efecto, costo, recarga y su historia real verificada ([Memoria BCRP 2008](https://www.bcrp.gob.pe/docs/Publicaciones/Memoria/2008/Memoria-BCRP-2008-5.pdf), [Memoria 2015](https://www.bcrp.gob.pe/docs/Publicaciones/Memoria/2015/memoria-bcrp-2015-5.pdf), [La República 2022 sobre 2021](https://larepublica.pe/economia/2022/01/07/bcrp-tuvo-la-mayor-intervencion-cambiaria-de-su-historia-us-175-millones), [Gestión 2017](https://gestion.pe/economia/mercados/bcr-reduce-encaje-soles-6-5-partir-abril-131584-noticia/)). Se ganan superando capítulos; usarlas con criterio sube la reelección ~8 puntos, usarlas todas sin criterio la baja.
+
 ## Hecho: pantalla del turno por secciones
 
 El turno se recorre en cuatro secciones con un clic (o las teclas 1–4): **Noticias y gente**, **El Estado** (Congreso y MEF), **El Directorio** (debate y proyección) y **El anuncio** (tasa, dólares, ganadores y perdedores, con la proyección al lado). Cada pestaña muestra una línea de resumen y un punto rojo si aún no se vio.

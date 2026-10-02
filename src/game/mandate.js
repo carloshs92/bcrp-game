@@ -1,3 +1,4 @@
+import { TOOL_BY_ID } from './toolbox.js';
 import { createState, step, inBand, neutralRate, PARAMS } from '../model/economy.js';
 import { EVENTS, EVENT_BY_ID, SURPRISES, SURPRISE_BY_ID } from '../model/events.js';
 import { rateMoods, regionMoods } from './people.js';
@@ -192,6 +193,11 @@ export default class Mandate {
         // El comunicado existe desde las metas de inflación (2002); el tutorial y 1990 no lo usan.
         this.guidanceOn = scenario.guidance !== false;
         this.guidance = null; // tono del último comunicado, que compromete el turno siguiente
+        // Caja de herramientas: lo que el escenario (o lo ganado en la historia) permite usar, una por turno.
+        this.toolbox = (scenario.toolbox ?? []).map(id => TOOL_BY_ID[id]).filter(t => t && (!t.needsFx || scenario.fx))
+            .map(t => ({ ...t, readyAt: 0, used: 0 }));
+        this.lastTool = null;
+        this.fxPassMult = 1; // baja para siempre con la desdolarización
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
         this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
@@ -332,6 +338,17 @@ export default class Mandate {
         return this.effects.reduce((acc, e) => addShock(acc, e.shock), {});
     }
 
+    /** Presión sobre el dólar que agregan las herramientas activas (swaps, encaje en dólares). */
+    toolFx() {
+        return this.effects.reduce((a, e) => a + (e.fx ?? 0), 0);
+    }
+
+    /** ¿Se puede usar esta herramienta este turno? */
+    toolReady(id) {
+        const t = this.toolbox.find(x => x.id === id);
+        return !!t && this.quarter >= t.readyAt && !(t.once && t.used);
+    }
+
     /** Presión sobre el dólar de este turno según el evento (sin imprevistos). */
     fxPressure() {
         return this.event.fx ?? 0;
@@ -342,12 +359,13 @@ export default class Mandate {
         return this.fx ? Math.max(0, this.fx.reserves - 0.3 * this.fx.initialReserves) : 0;
     }
 
-    projection(rate, sell = 0, tone = 'neutral') {
+    projection(rate, sell = 0, tone = 'neutral', toolId = null) {
         const g = guidanceEffect(this.state, this.guidanceOn ? tone : 'neutral');
-        let extra = addShock(this.toolShock(), g.shock);
+        const tool = this.toolReady(toolId) ? TOOL_BY_ID[toolId].effect : null;
+        let extra = addShock(addShock(this.toolShock(), g.shock), tool?.shock);
         if (this.fx) {
-            const dep = expectedDepreciation(this.fxPressure() + g.fx + this.brokenFx(rate - this.state.rate), rate - this.state.rate, sell);
-            extra = addShock(extra, { supply: passThrough(dep), demand: -FX.balanceSheet * Math.max(0, dep) });
+            const dep = expectedDepreciation(this.fxPressure() + g.fx + this.brokenFx(rate - this.state.rate) + this.toolFx() + (tool?.fx ?? 0), rate - this.state.rate, sell);
+            extra = addShock(extra, { supply: passThrough(dep) * this.fxPassMult, demand: -FX.balanceSheet * Math.max(0, dep) });
         }
         return projectPath(g.start, rate, this.event, 4, this.params, this.steps, extra, this.gradual);
     }
@@ -372,7 +390,7 @@ export default class Mandate {
         return true;
     }
 
-    decide(newRate, sell = 0, tone = 'neutral') {
+    decide(newRate, sell = 0, tone = 'neutral', toolId = null) {
         // Un proyecto de ley sin respuesta se da por "no opinar".
         if (this.congress.pendingBill) this.answerBill(2);
         newRate = Math.max(this.minRate, newRate);
@@ -387,6 +405,13 @@ export default class Mandate {
         if (surprise) this.stats.surprises += 1;
         if (!this.guidanceOn || !GUIDANCE[tone]) tone = 'neutral';
         const voice = guidanceEffect(prev, tone);
+        // La herramienta del turno entra como un efecto más (puede durar varios turnos).
+        const tool = this.toolReady(toolId) ? this.toolbox.find(x => x.id === toolId) : null;
+        if (tool) {
+            tool.used += 1;
+            for (const t of this.toolbox) if (t.group === tool.group) t.readyAt = this.quarter + 1 + (tool.cooldown ?? 1);
+            this.effects.push({ id: tool.id, shock: tool.effect.shock, fx: tool.effect.fx, turnsLeft: tool.effect.turns, after: tool.effect.after });
+        }
 
         // Los choques pegan más fuerte a medida que avanza el mandato (solo modo libre).
         const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / 4);
@@ -394,13 +419,13 @@ export default class Mandate {
         // Mercado cambiario: se resuelve antes que los precios, porque el dólar se traslada a la inflación.
         let fxRecord = null;
         if (this.fx) {
-            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0) + voice.fx + this.brokenFx(move);
+            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0) + voice.fx + this.brokenFx(move) + this.toolFx();
             const dep = expectedDepreciation(pressure, move, sell) + (this.fxRng() - 0.5) * FX.noise;
             const before = { ...this.fx };
             this.fx.rate *= 1 + dep / 100;
             this.fx.reserves = Math.max(0, this.fx.reserves - sell);
             this.fx.lastDep = dep;
-            total = addShock(total, { supply: passThrough(dep), demand: -FX.balanceSheet * Math.max(0, dep), credibility: dep > 4 ? -2 : 0 });
+            total = addShock(total, { supply: passThrough(dep) * this.fxPassMult, demand: -FX.balanceSheet * Math.max(0, dep), credibility: dep > 4 ? -2 : 0 });
             fxRecord = { before, rate: this.fx.rate, reserves: this.fx.reserves, dep, sell, pressure };
         }
         const base = splitShock(total, this.steps);
@@ -420,7 +445,12 @@ export default class Mandate {
             drivers.expectations += out.drivers.expectations;
             drivers.supply += out.drivers.supply;
         }
-        this.effects = this.effects.map(e => ({ ...e, turnsLeft: e.turnsLeft - 1 })).filter(e => e.turnsLeft > 0);
+        this.effects = this.effects.map(e => ({ ...e, turnsLeft: e.turnsLeft - 1 }));
+        for (const e of this.effects.filter(x => x.turnsLeft <= 0 && x.after?.fxPass)) {
+            this.fxPassMult = Math.min(this.fxPassMult, e.after.fxPass);
+            notes.push({ tone: 'good', text: 'La desdolarización ya rinde: ahora el dólar pesa mucho menos en los precios.' });
+        }
+        this.effects = this.effects.filter(e => e.turnsLeft > 0);
 
         // Promesa hecha al Congreso en una citación: romperla cuesta caro.
         let promiseNote = null;
@@ -456,10 +486,21 @@ export default class Mandate {
         }
         this.guidance = tone === 'neutral' ? null : tone;
 
+        // Costos de la herramienta: credibilidad, y abusar de los repos turno tras turno.
+        if (tool) {
+            let cred = tool.effect.credibility ?? 0;
+            if (tool.abuse && this.lastTool === tool.id) {
+                cred -= tool.abuse;
+                notes.push({ tone: 'warn', text: `Usaste ${tool.name.toLowerCase()} dos turnos seguidos: el mercado empieza a preguntarse por qué.` });
+            }
+            if (cred) s = { ...s, credibility: clamp(s.credibility + cred, 0, 100) };
+        }
+        this.lastTool = tool?.id ?? null;
+
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
         let pressure = this.pressure + (CONGRESS.start - this.pressure) * CONGRESS.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
-        pressure += (surprise?.pressure ?? 0) + voice.pressure;
+        pressure += (surprise?.pressure ?? 0) + voice.pressure + (tool?.effect.pressure ?? 0);
         if (event.asks === 'bajar') {
             if (move > 0) {
                 pressure += event.pressure * CONGRESS.askWeight;
@@ -510,6 +551,7 @@ export default class Mandate {
         };
         record.fx = fxRecord;
         record.tone = tone;
+        record.tool = tool?.id ?? null;
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
         const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];

@@ -1,6 +1,7 @@
 import './styles.css';
 import { TUTORIAL } from './model/history.js';
 import { FREE_SCENARIO } from './game/mandate.js';
+import { unlockedTools } from './game/toolbox.js';
 import { getStory, markTutorialDone, getMandateRecord, saveMandate, markIntroSeen, getProgress, getSettings, saveSettings, DIFFICULTIES } from './storage.js';
 import { renderTitle, renderIntro } from './views/intro.js';
 import { renderStory } from './views/story.js';
@@ -61,7 +62,9 @@ function tutorial() {
 
 function free() {
     const rec = getMandateRecord();
-    const go = () => playScenario(root, FREE_SCENARIO, {
+    // En el modo libre se usan las herramientas ganadas en el modo historia.
+    const scenario = { ...FREE_SCENARIO, toolbox: unlockedTools(getStory().chapters), showLockedTools: true };
+    const go = () => playScenario(root, scenario, {
         title: 'Modo Libre',
         tips: rec.tipsSeen ? null : [
             'Mueve la tasa y mira el abanico: es lo que tu equipo proyecta para el próximo año.',

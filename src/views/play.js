@@ -15,6 +15,7 @@ import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, h
 import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 import { icon, KIND_ICON, hawk, dove, bust, congressScene } from './icons.js';
+import { TOOLBOX, TOOL_BY_ID } from '../game/toolbox.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -200,6 +201,49 @@ function effectChips({ pressure = 0, credibility = 0, extra = '' }) {
     return `<span class="fx-chips">${chip('congress', 'Enojo', pressure, false)}${chip('handshake', 'Credibilidad', credibility, true)}${extra ? `<span class="fx-chip warn">${extra}</span>` : ''}</span>`;
 }
 
+const UNLOCK_LABEL = { 'crisis-2008': 'el capítulo 2008', 'nino-2017': 'el capítulo 2017', 'inflacion-2022': 'el capítulo 2021–23' };
+
+/** Caja de herramientas: una por turno, con su efecto, su costo y su recarga. Las bloqueadas se ven para dar ganas de ganarlas. */
+function toolboxBlock(m, pick, diff) {
+    const locked = m.scenario.showLockedTools
+        ? TOOLBOX.filter(t => !m.toolbox.some(x => x.id === t.id) && (!t.needsFx || m.fx)) : [];
+    if (!m.toolbox.length && !locked.length) return '';
+    const chips = t => {
+        const e = t.effect, out = [];
+        const d = e.shock?.demand ?? 0;
+        if (d) out.push(['Crédito y demanda', d > 0 ? '▲' : '▼']);
+        if (e.fx) out.push(['Dólar', e.fx > 0 ? '▲' : '▼']);
+        if (e.after?.fxPass) out.push(['El dólar pesa menos en precios', '']);
+        if (e.pressure) out.push(['Enojo', e.pressure > 0 ? '▲' : '▼']);
+        return `<span class="fx-chips">${out.map(([l, a]) => `<span class="fx-chip info">${l} ${a}</span>`).join('')}</span>`;
+    };
+    const status = t => {
+        if (t.once && t.used) return 'Ya usada';
+        if (m.quarter < t.readyAt) { const n = t.readyAt - m.quarter; return `Recargando: ${n} turno${n > 1 ? 's' : ''}`; }
+        return t.effect.turns > 1 ? `Dura ${t.effect.turns} turnos` : 'Efecto este turno';
+    };
+    return `
+      <div class="toolbox">
+        <div class="fx-head"><strong>${icon('vault', { size: 16 })} Caja de herramientas</strong>
+          <span>Una por turno · opcional</span></div>
+        ${m.toolbox.length ? '' : '<p class="toolbox-empty">Aún no tienes herramientas. Supera capítulos del modo historia para ganarlas.</p>'}
+        <div class="tools-grid">${m.toolbox.map(t => {
+            const ready = m.toolReady(t.id);
+            return `<button class="tcard${t.id === pick ? ' on' : ''}" data-pick="${t.id}" ${ready ? '' : 'disabled'} aria-pressed="${t.id === pick}">
+              <span class="tcard-top"><span class="tcard-ico">${icon(t.icon, { size: 18 })}</span><strong>${t.name}</strong></span>
+              <span class="tcard-desc">${t.desc}</span>
+              ${diff.hints ? chips(t) : ''}
+              <small>${t.cost} · ${status(t)}</small>
+            </button>`;
+        }).join('')}${locked.map(t => `
+            <div class="tcard locked" title="Se gana al superar ${UNLOCK_LABEL[t.unlock] ?? 'el modo historia'}">
+              <span class="tcard-top"><span class="tcard-ico">${icon('lock', { size: 18 })}</span><strong>${t.name}</strong></span>
+              <small>Se gana al superar ${UNLOCK_LABEL[t.unlock] ?? 'el modo historia'}</small>
+            </div>`).join('')}
+        </div>
+      </div>`;
+}
+
 /** El comunicado: tres tonos con su efecto inmediato y lo que comprometen para el próximo turno. */
 function guidanceBlock(m, move, tone, diff) {
     const prev = m.guidance;
@@ -271,6 +315,7 @@ export function playScenario(root, scenario, opts) {
     let move = 0;
     let shownRate = null;   // para animar el número cuando cambia la tasa elegida
     let tone = 'neutral';   // el comunicado del turno
+    let toolPick = null;    // la herramienta del turno (una sola)
     let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
@@ -566,7 +611,8 @@ export function playScenario(root, scenario, opts) {
         const s = m.state;
         const rate = Math.max(m.minRate, s.rate + move);
         const adv = m.advisors();
-        const proj = m.projection(rate, sell, tone);
+        if (toolPick && !m.toolReady(toolPick)) toolPick = null;
+        const proj = m.projection(rate, sell, tone, toolPick);
         const end = proj.at(-1);
         const endOk = inBand(end.inflation);
 
@@ -602,6 +648,7 @@ export function playScenario(root, scenario, opts) {
           </div>
           ${m.fx ? fxBlock(m, move, sell, diff) : ''}
           ${m.guidanceOn ? guidanceBlock(m, move, tone, diff) : ''}
+          ${toolboxBlock(m, toolPick, diff)}
           ${tools}
           ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre. Puedes romper la promesa, pero te costará credibilidad.</div>' : ''}
           ${tradeoffTable(move, sell, !!m.fx)}
@@ -618,6 +665,7 @@ export function playScenario(root, scenario, opts) {
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-tone]').forEach(b => b.addEventListener('click', () => { tone = b.dataset.tone; music.click(); updateDecision(); }));
+        el.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => { toolPick = toolPick === b.dataset.pick ? null : b.dataset.pick; music.click(); updateDecision(); }));
         el.querySelector('[data-term="comunicado"]')?.addEventListener('click', () => openGlossary('comunicado'));
         el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
         el.querySelector('[data-announce]').addEventListener('click', announce);
@@ -639,9 +687,11 @@ export function playScenario(root, scenario, opts) {
             : d === 0 ? `El Directorio acordó mantener la tasa de referencia en ${pct(rate, 2)}…`
             : `El Directorio acordó ${d > 0 ? 'elevar' : 'reducir'} la tasa de referencia a ${pct(rate, 2)}…`
             + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : '')
+            + (toolPick ? `. Además: ${TOOL_BY_ID[toolPick].name.toLowerCase()}` : '')
             + (m.guidanceOn && tone !== 'neutral' ? ` «${GUIDANCE[tone].phrase}»` : ''));
-        const rec = m.decide(rate, sell, tone);
+        const rec = m.decide(rate, sell, tone, toolPick);
         tone = 'neutral';
+        toolPick = null;
         sell = 0;
         rec.timeout = timeout;
         lastPeople = rec.people;
@@ -696,6 +746,7 @@ export function playScenario(root, scenario, opts) {
             <h2 class="paper-head">${rec.headline}</h2>
             <p class="paper-sub">El Directorio del BCR ${rec.move === 0 ? `mantuvo la tasa en ${pct(rec.rate, 2)}` : `${rec.move > 0 ? 'subió' : 'bajó'} la tasa ${Math.round(Math.abs(rec.move) * 100)} pb, a ${pct(rec.rate, 2)}`}.</p>
             ${rec.tone && rec.tone !== 'neutral' ? `<p class="paper-quote">${icon('megaphone', { size: 14 })}Comunicado: «${GUIDANCE[rec.tone].phrase}»</p>` : ''}
+            ${rec.tool ? `<p class="paper-tool">${icon(TOOL_BY_ID[rec.tool].icon, { size: 14 })}<span><strong>${TOOL_BY_ID[rec.tool].name}.</strong> ${TOOL_BY_ID[rec.tool].history}</span></p>` : ''}
           </div>
           <div class="reveal">
             <div class="reveal-num"><small>Inflación</small><span class="num" data-anim-from="${rec.prev.inflation}" data-anim-to="${rec.state.inflation}">${pct(rec.prev.inflation)}</span></div>

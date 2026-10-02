@@ -55,6 +55,7 @@ export const CHAPTERS = [
     },
     {
         id: 'crisis-2008',
+        toolbox: ['encaje-sube', 'encaje-baja', 'encaje-dolares', 'repos'], // caja de herramientas de la época
         kind: 'rate',
         number: 2,
         year: '2008',
@@ -108,6 +109,7 @@ export const CHAPTERS = [
     },
     {
         id: 'nino-2017',
+        toolbox: ['encaje-baja', 'encaje-sube'], // caja de herramientas de la época
         kind: 'rate',
         number: 3,
         year: '2017',
@@ -146,6 +148,7 @@ export const CHAPTERS = [
     },
     {
         id: 'pandemia-2020',
+        toolbox: ['repos', 'encaje-baja'], // caja de herramientas de la época
         kind: 'rate',
         number: 4,
         year: '2020',
@@ -196,6 +199,7 @@ export const CHAPTERS = [
     },
     {
         id: 'inflacion-2022',
+        toolbox: ['swaps', 'encaje-sube', 'encaje-dolares'], // caja de herramientas de la época
         kind: 'rate',
         number: 5,
         year: '2021–2023',
