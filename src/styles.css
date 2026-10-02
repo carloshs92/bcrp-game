@@ -1043,3 +1043,20 @@ button.tcard:hover:not([disabled]) { transform: translateY(-1px); border-color: 
 .climax-banner .ico { flex: none; }
 .mandate.climax .turn-nav button.on { background: var(--red); border-color: var(--red); }
 @keyframes climaxPulse { 50% { box-shadow: 0 6px 28px rgba(184, 32, 47, .55); } }
+
+/* ================= Logros y portada ================= */
+.title-card .dicho { font-family: Georgia, 'Times New Roman', serif; font-style: italic; color: var(--ink-2); margin-bottom: 14px; }
+.mode[data-express] .mode-ico { background: var(--bad-bg); color: var(--red); }
+.title-links .btn { display: inline-flex; align-items: center; gap: 6px; }
+.achievements { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.achievements .ach { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); position: relative; }
+.achievements .ach > div { display: grid; gap: 2px; }
+.achievements .ach strong { color: var(--navy); font-size: 14.5px; }
+.achievements .ach small { color: var(--ink-2); font-size: 12.5px; }
+.achievements .ach .pill { position: absolute; top: -8px; right: 8px; }
+.ach-ico { flex: none; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: #fff8e1; color: #a15c00; }
+.ach.new { border-color: #f2b705; box-shadow: 0 0 0 3px rgba(242, 183, 5, .25); animation: pop .5s ease; }
+.ach.locked { opacity: .55; border-style: dashed; }
+.ach.locked .ach-ico { background: var(--surface-2); color: var(--muted); }
+.achievements.gallery { max-height: 60vh; overflow: auto; padding: 8px 2px; }
+.suspense-quip { margin-top: 12px; font-size: 13px; font-style: italic; color: var(--muted); animation: fade .6s ease .5s backwards; }

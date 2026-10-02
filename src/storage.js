@@ -50,6 +50,20 @@ export function saveMandate(patch) {
     write({ ...d, mandate: { ...getMandateRecord(), ...patch } });
 }
 
+/** Logros ganados en cualquier modo (ids), incluidos los del modo libre de versiones anteriores. */
+export function getAchievements() {
+    const d = read();
+    return [...new Set([...(d.achievements ?? []), ...(d.mandate?.achievements ?? [])])];
+}
+
+/** Suma logros y devuelve solo los nuevos. */
+export function unlockAchievements(ids) {
+    const have = new Set(getAchievements());
+    const fresh = ids.filter(id => !have.has(id));
+    if (fresh.length) write({ ...read(), achievements: [...have, ...fresh] });
+    return fresh;
+}
+
 /** Progreso del Modo Historia y del tutorial. */
 export function getStory() {
     const d = read();

@@ -1,7 +1,18 @@
 import { building, transmission, cycle, money, shield } from './art.js';
 import { icon } from './icons.js';
 
-export function renderTitle(root, { story, record, settings, onTutorial, onStory, onFree, onIntro, onSettings }) {
+/** Dichos para la portada: uno al azar cada vez. */
+const DICHOS = [
+    'Perú es clave.',
+    'Del inti al sol, y que no se repita.',
+    'Chamba es chamba: alguien tiene que cuidar el sol.',
+    'A la firme: la estabilidad no se improvisa.',
+    'La inflación no perdona, causa.',
+    'Más firme que el sol de Lima… bueno, ese casi no sale.',
+    'Si el dólar sube, Pepe el cambista ya lo sabe.'
+];
+
+export function renderTitle(root, { story, record, settings, onTutorial, onStory, onFree, onExpress, onIntro, onSettings, onAchievements, achievements }) {
     root.innerHTML = `
     <main class="title-screen">
       <div class="title-card">
@@ -9,6 +20,7 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
         <div class="eyebrow">Un juego sobre el Banco Central de Reserva del Perú</div>
         <h1>Sol Firme</h1>
         <div class="tagline">Tú diriges el BCR. Todo el Perú te mira.</div>
+        <div class="dicho">«${DICHOS[Math.floor(Math.random() * DICHOS.length)]}»</div>
         <p>Siéntate en el Directorio del BCR. Enfrenta la hiperinflación de 1990, la crisis de 2008, El Niño costero, la pandemia y la inflación de 2022. ¿Harías lo mismo que el BCRP?</p>
         <div class="modes">
           <button class="mode ${story.tutorialDone ? '' : 'primary'}" data-tutorial>
@@ -20,11 +32,15 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
           <button class="mode" data-free>
             <span class="mode-ico">${icon('dice', { size: 22 })}</span><strong>Modo Libre</strong><small>Un mandato de 3 años con eventos al azar</small>
           </button>
+          <button class="mode" data-express>
+            <span class="mode-ico">${icon('flame', { size: 22 })}</span><strong>Mandato exprés</strong><small>6 turnos · unos 5 minutos · al toque</small>
+          </button>
         </div>
         ${record.played ? `<p class="record">Modo libre: ${record.played} mandatos · ratificado ${record.reappointed} · mejor puntaje ${record.bestScore}</p>` : ''}
         <div class="title-links">
           <button class="btn btn-ghost" data-settings>Configuración · Dificultad: ${settings.name}</button>
           <button class="btn btn-ghost" data-intro>¿Qué es el BCR?</button>
+          <button class="btn btn-ghost" data-ach>${icon('target', { size: 16 })} Logros ${achievements ? `${achievements.have}/${achievements.total}` : ''}</button>
         </div>
         <p class="disclaimer">Juego educativo independiente, no oficial. Es una simplificación: la política monetaria real considera muchos más factores. Los personajes son ficticios; los datos históricos provienen de BCRPData.</p>
       </div>
@@ -32,6 +48,8 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
     root.querySelector('[data-tutorial]').addEventListener('click', onTutorial);
     root.querySelector('[data-story]').addEventListener('click', onStory);
     root.querySelector('[data-free]').addEventListener('click', onFree);
+    root.querySelector('[data-express]').addEventListener('click', onExpress);
+    root.querySelector('[data-ach]').addEventListener('click', onAchievements);
     root.querySelector('[data-intro]').addEventListener('click', onIntro);
     root.querySelector('[data-settings]').addEventListener('click', onSettings);
     root.querySelector('.mode.primary')?.focus();

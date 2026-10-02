@@ -201,7 +201,7 @@ export default class Mandate {
         this.scheduled = null;
         this.calmCount = 0;
         this.gameOver = null;
-        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0 };
+        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0, maxPressure: 0, envyTurns: 0, combos: 0, climaxWon: false };
         this.tools = (scenario.tools ?? []).map(t => ({ ...t, left: t.uses ?? 1 }));
         this.effects = []; // efectos de herramientas que duran varios turnos
         // El comunicado existe desde las metas de inflación (2002); el tutorial y 1990 no lo usan.
@@ -248,7 +248,7 @@ export default class Mandate {
         }
         if (!this.scenario.randomEvents) return EVENT_BY_ID.calma;
         // La intensidad sube con el mandato: año 1 suave, año 2 medio, año 3 fuerte.
-        const year = Math.min(2, Math.floor(this.quarter / 4));
+        const year = Math.min(2, Math.floor(this.quarter / (this.scenario.yearLength ?? 4)));
         const weights = [[1, 0, 0], [0.35, 0.65, 0], [0.1, 0.4, 0.5]][year];
         // Máximo 2 trimestres tranquilos por mandato: la calma es un respiro, no la norma.
         const pool = EVENTS.filter(e => e.tier <= 3 && !this.used.has(e.id)
@@ -441,7 +441,7 @@ export default class Mandate {
         }
 
         // Los choques pegan más fuerte a medida que avanza el mandato (solo modo libre).
-        const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / 4);
+        const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / (this.scenario.yearLength ?? 4));
         let total = addShock(addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock()), voice.shock);
         // Mercado cambiario: se resuelve antes que los precios, porque el dólar se traslada a la inflación.
         let fxRecord = null;
@@ -600,6 +600,10 @@ export default class Mandate {
         record.tool = tool?.id ?? null;
         record.climax = climax;
         record.climaxWon = climaxWon;
+        if (climaxWon) this.stats.climaxWon = true;
+        if (envy > 0) this.stats.envyTurns += 1;
+        if (move !== 0 && tone !== 'neutral' && tool) this.stats.combos += 1;
+        this.stats.maxPressure = Math.max(this.stats.maxPressure, this.pressure);
         record.envy = envy;
         record.envyTo = envyTo;
         this.lastEnvy = envy;
@@ -740,15 +744,8 @@ export default class Mandate {
             ? (score >= 100 ? 3 : score >= 75 ? 2 : 1)
             : (score >= 85 ? 3 : score >= 65 ? 2 : 1);
 
+        // Los logros se calculan fuera del motor (game/achievements.js), con el contexto de la partida.
         const achievements = [];
-        if (!goals) {
-            if (reappointed && final.growth >= 2) achievements.push({ id: 'aterrizaje', name: 'Aterrizaje suave', text: 'Terminaste en la meta con la economía creciendo sobre 2%.' });
-            if (this.bestStreak >= 6) achievements.push({ id: 'racha', name: 'Racha de estabilidad', text: `${this.bestStreak} trimestres seguidos en la meta.` });
-            if (survived && this.stats.resisted >= 2 && this.stats.ceded === 0) achievements.push({ id: 'autonomo', name: 'Autonomía', text: 'Resististe la presión política sin ceder.' });
-            if (survived && this.stats.bigMoves === 0) achievements.push({ id: 'gradual', name: 'Mano firme', text: 'Nunca moviste la tasa más de 50 pb de golpe.' });
-            if (this.used.has('nino-golpe') && survived && inBand(final.inflation)) achievements.push({ id: 'nino', name: 'Sobreviviste a El Niño', text: 'Superaste un choque de oferta sin perder el rumbo.' });
-            if (survived && this.stats.surprises >= 3) achievements.push({ id: 'imprevistos', name: 'Nervios de acero', text: `Sobreviviste a ${this.stats.surprises} imprevistos.` });
-        }
 
         return { reappointed, passed: reappointed, survived, gameOver: this.gameOver, inBandCount, score, stars, final, minGrowth, bestStreak: this.bestStreak, achievements, checks };
     }

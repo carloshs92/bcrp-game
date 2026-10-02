@@ -2,6 +2,7 @@ import './styles.css';
 import { TUTORIAL } from './model/history.js';
 import { FREE_SCENARIO } from './game/mandate.js';
 import { unlockedTools } from './game/toolbox.js';
+import { award, openAchievements, achievementsCount } from './views/achievementsView.js';
 import { getStory, markTutorialDone, getMandateRecord, saveMandate, markIntroSeen, getProgress, getSettings, saveSettings, DIFFICULTIES } from './storage.js';
 import { renderTitle, renderIntro } from './views/intro.js';
 import { renderStory } from './views/story.js';
@@ -22,6 +23,9 @@ function title() {
         onTutorial: tutorial,
         onStory: () => withIntro(() => renderStory(root, { onHome: title })),
         onFree: () => withIntro(free),
+        onExpress: () => withIntro(() => free({ express: true })),
+        onAchievements: openAchievements,
+        achievements: achievementsCount(),
         onIntro: () => renderIntro(root, { onDone: () => { markIntroSeen(); title(); } })
     });
 }
@@ -41,7 +45,9 @@ function tutorial() {
         onExit: title,
         onFinish: (m, r) => {
             if (r.passed) markTutorialDone();
+            const { earned, fresh } = award({ mode: 'tutorial', m, r });
             renderVerdict(root, m, r, {
+                achievements: earned, newAch: fresh,
                 title: r.passed ? '¡Aprobaste tu primer Programa Monetario!' : 'Casi: la inflación quedó alta',
                 text: r.passed
                     ? 'Ya sabes lo esencial: la tasa, la proyección, los asesores y los imprevistos. Ahora vive la historia real del BCR.'
@@ -60,12 +66,17 @@ function tutorial() {
     else start();
 }
 
-function free() {
+function free({ express = false } = {}) {
     const rec = getMandateRecord();
     // En el modo libre se usan las herramientas ganadas en el modo historia.
-    const scenario = { ...FREE_SCENARIO, toolbox: unlockedTools(getStory().chapters), showLockedTools: true };
+    const scenario = {
+        ...FREE_SCENARIO, toolbox: unlockedTools(getStory().chapters), showLockedTools: true,
+        // Exprés: medio mandato, con los eventos subiendo de intensidad el doble de rápido.
+        ...(express ? { id: 'expres', turns: 6, yearLength: 2, reappoint: { ...FREE_SCENARIO.reappoint, minInBand: 5 } } : {})
+    };
+    const need = scenario.reappoint.minInBand;
     const go = () => playScenario(root, scenario, {
-        title: 'Modo Libre',
+        title: express ? 'Mandato exprés' : 'Modo Libre',
         tips: rec.tipsSeen ? null : [
             'Mueve la tasa y mira el abanico: es lo que tu equipo proyecta para el próximo año.',
             'La tasa tarda en hacer efecto. Decide pensando en dónde estará la inflación, no dónde está hoy.',
@@ -74,12 +85,11 @@ function free() {
         onExit: title,
         onFinish: (m, r) => {
             const before = getMandateRecord();
-            const newAch = r.achievements.filter(a => !before.achievements.includes(a.id));
+            const { earned, fresh } = award({ mode: express ? 'expres' : 'libre', m, r });
             saveMandate({
                 played: before.played + 1,
                 reappointed: before.reappointed + (r.reappointed ? 1 : 0),
                 bestScore: Math.max(before.bestScore, r.score),
-                achievements: [...new Set([...before.achievements, ...r.achievements.map(a => a.id)])],
                 tipsSeen: true
             });
             const over = r.gameOver && GAME_OVER[r.gameOver];
@@ -87,17 +97,17 @@ function free() {
                 title: over ? over.title : r.reappointed ? '¡El Directorio es ratificado por otro período!' : 'El Directorio no es ratificado',
                 text: over ? over.text : r.reappointed
                     ? `Mantuviste la inflación en la meta ${r.inBandCount} de ${m.turns} trimestres y terminaste en ${r.final.inflation.toFixed(1)}%.`
-                    : `La inflación estuvo en la meta ${r.inBandCount} de ${m.turns} trimestres. Para ser ratificado necesitas 9 trimestres en meta y terminar dentro del rango.`,
-                achievements: r.achievements, newAch,
+                    : `La inflación estuvo en la meta ${r.inBandCount} de ${m.turns} trimestres. Para ser ratificado necesitas ${need} trimestres en meta y terminar dentro del rango.`,
+                achievements: earned, newAch: fresh,
                 stats: [[`${r.score}${r.score > before.bestScore && r.score > 0 ? ' ★' : ''}`, r.score > before.bestScore && r.score > 0 ? 'puntaje · ¡nuevo récord!' : 'puntaje'], [`${r.inBandCount}/${m.turns}`, 'trimestres en meta'], [`${r.bestStreak}`, 'mejor racha'], [`${m.stats.surprises}`, 'imprevistos']],
                 actions: [
                     { id: 'exit', label: 'Volver al inicio', run: title },
-                    { id: 'again', label: 'Nuevo mandato', primary: true, run: free }
+                    { id: 'again', label: express ? 'Otro mandato exprés' : 'Nuevo mandato', primary: true, run: () => free({ express }) }
                 ]
             });
         }
     });
-    if (rec.tipsSeen) return go();
+    if (rec.tipsSeen || express) return go();
     openModal(`
       <div class="eyebrow">Modo libre</div>
       <h2>Tres años en el Directorio del BCR</h2>

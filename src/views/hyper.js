@@ -11,6 +11,7 @@ import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, h
 import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 import { icon } from './icons.js';
+import { achievementsBlock } from './achievementsView.js';
 
 const pct = v => `${v.toFixed(1)}%`;
 const help = term => `<button class="help" data-term="${term}" aria-label="¿Qué es esto?">?</button>`;
@@ -203,7 +204,7 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
         const c = HYPER_CHOICES.find(x => x.id === choice);
         await announceSuspense(timeout
             ? `Se acabó el tiempo. Sin una decisión, el BCR sigue como venía: ${c.name.toLowerCase()}…`
-            : `El BCR comunica su decisión: ${c.name.toLowerCase()}…`);
+            : `El BCR comunica su decisión: ${c.name.toLowerCase()}…`, { era: 1990 });
         const rec = h.decide(choice);
         rec.timeout = timeout;
         lastChoice = choice;
@@ -265,7 +266,7 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
 }
 
 /** Veredicto del capítulo 1990, con la trayectoria real mes a mes. */
-export function renderHyperVerdict(root, h, r, { actions }) {
+export function renderHyperVerdict(root, h, r, { actions, achievements = [], newAch = [] }) {
     const ch = h.chapter;
     const n = h.history.length - 1;
     const over = r.gameOver === 'estallido'
@@ -297,6 +298,7 @@ export function renderHyperVerdict(root, h, r, { actions }) {
             ]
         })}</div>
         ${peopleBalance(h.peopleHistory, h.regionHistory)}
+        ${achievementsBlock(achievements, newAch)}
         <div class="section-title">Lo que pasó en la realidad</div>
         <p class="reality">${ch.reality}</p>
         <details class="sources"><summary>Fuentes</summary><ul>${ch.sources.map(s => `<li><a href="${s.url}" target="_blank" rel="noopener">${s.label}</a></li>`).join('')}</ul></details>

@@ -17,6 +17,7 @@ import { bindMap } from './peruMap.js';
 import { icon, KIND_ICON, hawk, dove, bust, congressScene } from './icons.js';
 import { TOOLBOX, TOOL_BY_ID } from '../game/toolbox.js';
 import { scene } from './scenes.js';
+import { achievementsBlock } from './achievementsView.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -187,11 +188,31 @@ export function showBreaking(surprise, { onClose }) {
 }
 
 /** Pausa dramática mientras el Directorio "anuncia" la decisión. */
-export async function announceSuspense(text) {
+/** Mientras el país espera el anuncio (humor de fondo; en 1990 no había redes sociales). */
+const QUIPS = {
+    hoy: [
+        'Mientras tanto, en el jirón Ocoña, Pepe ya está borrando su pizarra…',
+        'En el Congreso alguien ya tiene el tuit listo, por si acaso…',
+        'Don Mario frenó la combi para escuchar la noticia…',
+        'La caserita de Surquillo subió el volumen de la radio…',
+        'Los analistas ya tienen su gráfico listo para decir «se los dije»…',
+        'En la sala del Directorio se acabó el café pasado…',
+        'Perú es clave… y esta decisión también.'
+    ],
+    1990: [
+        'En la cola del pan nadie habla de otra cosa…',
+        'El cambista de la esquina ya cambió su cartel tres veces hoy…',
+        'Las radios interrumpen la música para el anuncio…',
+        'En la bodega, el caserito espera antes de remarcar los precios…'
+    ]
+};
+
+export async function announceSuspense(text, { era = 'hoy' } = {}) {
     music.setMood('announce');
+    const quips = QUIPS[era] ?? QUIPS.hoy;
     const overlay = document.createElement('div');
     overlay.className = 'suspense';
-    overlay.innerHTML = `<div class="suspense-card">${andeanBand}<div class="suspense-title">Nota Informativa del Programa Monetario</div><div class="suspense-text">${text}</div><div class="suspense-dots"><i></i><i></i><i></i></div></div>`;
+    overlay.innerHTML = `<div class="suspense-card">${andeanBand}<div class="suspense-title">Nota Informativa del Programa Monetario</div><div class="suspense-text">${text}</div><div class="suspense-dots"><i></i><i></i><i></i></div><div class="suspense-quip">${quips[Math.floor(Math.random() * quips.length)]}</div></div>`;
     document.body.appendChild(overlay);
     await sleep(2100);
     overlay.remove();
@@ -953,8 +974,7 @@ export function renderVerdict(root, m, r, { title, text, reality, sources, achie
         <div class="chart">${charts}${fxChart}</div>
         ${peopleBalance(m.peopleHistory, m.regionHistory)}
         ${reality ? `<div class="section-title">Lo que pasó en la realidad</div><p class="reality">${reality}</p>` : ''}
-        ${achievements.length ? `<div class="section-title">Logros</div>
-        <div class="achievements">${achievements.map(a => `<div class="ach${newAch.includes(a) ? ' new' : ''}"><strong>${a.name}</strong><small>${a.text}</small>${newAch.includes(a) ? '<span class="pill good">Nuevo</span>' : ''}</div>`).join('')}</div>` : ''}
+        ${achievementsBlock(achievements, newAch)}
         ${sources?.length ? `<details class="sources"><summary>Fuentes</summary><ul>${sources.map(s => `<li><a href="${s.url}" target="_blank" rel="noopener">${s.label}</a></li>`).join('')}</ul></details>` : ''}
         <div class="modal-actions">${actions.map(a => `<button class="btn ${a.primary ? 'btn-primary' : ''}" data-action="${a.id}">${a.label}</button>`).join('')}</div>
       </section>

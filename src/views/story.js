@@ -1,4 +1,5 @@
 import { scene } from './scenes.js';
+import { award } from './achievementsView.js';
 import { CHAPTERS, INTERLUDES, INTERLUDE_SOURCES } from '../model/history.js';
 import { logo, andeanBand } from './art.js';
 import { openModal } from './modal.js';
@@ -122,7 +123,8 @@ function playChapter(root, ch, { onHome }) {
             onExit: back,
             onFinish: (h, r) => {
                 saveChapter(ch.id, r);
-                renderHyperVerdict(root, h, r, { actions: actions(r) });
+                const { earned, fresh } = award({ mode: 'capitulo', chapter: ch.id, m: h, r });
+                renderHyperVerdict(root, h, r, { actions: actions(r), achievements: earned, newAch: fresh });
             }
         });
         return;
@@ -133,6 +135,7 @@ function playChapter(root, ch, { onHome }) {
         onExit: back,
         onFinish: (m, r) => {
             saveChapter(ch.id, r);
+            const { earned, fresh } = award({ mode: 'capitulo', chapter: ch.id, m, r });
             const go = r.gameOver && GAME_OVER[r.gameOver];
             renderVerdict(root, m, r, {
                 title: go ? go.title : r.passed ? '¡Capítulo superado!' : 'No lograste los objetivos',
@@ -141,6 +144,7 @@ function playChapter(root, ch, { onHome }) {
                     : 'Revisa los objetivos y compara tus decisiones con las del BCRP real.',
                 reality: ch.reality,
                 sources: ch.sources,
+                achievements: earned, newAch: fresh,
                 stats: [
                     [`${r.score}%`, 'vs. BCRP real (100% = igual)'],
                     [r.passed ? stars(r.stars) : '—', 'estrellas'],
