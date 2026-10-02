@@ -8,7 +8,7 @@ import { openGlossary } from './glossary.js';
 import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
-import { rateTradeoff } from '../game/people.js';
+import { rateTradeoff, sectorVoice } from '../game/people.js';
 import { congressMood, BILL_RESPONSES, ANSWER_EFFECTS, BILLS } from '../model/congress.js';
 import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
@@ -112,6 +112,61 @@ function advisorCard(kind, a, selected) {
       <span class="adv-top"><span class="adv-bird">${kind === 'hawk' ? hawk : dove}</span><span class="adv-name"><strong>${name}</strong><small>${tag}</small></span><span class="adv-move num">${moveLabel(a.move)}</span></span>
       <span class="adv-why">${a.why}</span>
     </button>`;
+}
+
+/**
+ * Reacción en vivo: segundos después del anuncio, el país reacciona. El dólar en la pizarra de Pepe,
+ * los analistas, la gente y el Congreso, uno tras otro. Luego, el diario con el trimestre completo.
+ */
+export function showReaction(rec, onDone) {
+    const items = [];
+    if (rec.fx) {
+        const up = rec.fx.dep > 0;
+        items.push({ who: 'cambista', name: 'Pepe, cambista del jirón Ocoña', text: `¡${up ? 'Sube' : 'Baja'} el dólar, ${up ? 'sube' : 'baja'}! Ahorita está a <strong class="num ticker" data-from="${rec.fx.before.rate}" data-to="${rec.fx.rate}">S/ ${rec.fx.before.rate.toFixed(3)}</strong> <span class="${up ? 'txt-bad' : 'txt-good'}">${up ? '▲' : '▼'} ${Math.abs(rec.fx.dep).toFixed(1)}%</span>` });
+    }
+    const dCred = rec.state.credibility - rec.prev.credibility;
+    const exp = `${pct(rec.state.expectations)}`;
+    items.push({
+        who: 'analista', name: 'Analista de una consultora limeña',
+        text: dCred >= 2 ? `El mercado le cree al BCR: las expectativas de inflación quedan en ${exp}.`
+            : dCred <= -3 ? `Los analistas dudan del BCR: las expectativas de inflación suben a ${exp}.`
+                : rec.move > 0 ? 'Los bancos ya anuncian créditos un poco más caros en los próximos meses.'
+                    : rec.move < 0 ? 'Los créditos se irán abaratando en los próximos meses. Las mypes celebran.'
+                        : 'Sin cambios en la tasa: el mercado ya lo esperaba.'
+    });
+    [...rec.people].sort((a, b) => Math.abs(b.mood) - Math.abs(a.mood)).slice(0, 2)
+        .forEach(sct => items.push({ mood: sct.mood, name: sct.who ?? sct.name, text: `“${sectorVoice(sct)}”` }));
+    const dP = rec.pressure - rec.prevPressure;
+    items.push(rec.declaration
+        ? { ico: 'congress', name: `Desde el Congreso · frase real de un congresista (${rec.declaration.year})`, text: `“${rec.declaration.text}”` }
+        : rec.envy ? { ico: 'congress', name: 'Desde el Congreso', text: 'Les incomoda que al BCR le vaya bien: ya hay quienes piden que vengas a explicar "qué haces con tanta plata".' }
+            : dP >= 6 ? { ico: 'congress', name: 'Desde el Congreso', text: `Las críticas al BCR suben de tono (+${Math.round(dP)} de enojo).` }
+                : { ico: 'congress', name: 'Desde el Congreso', text: 'Por ahora, silencio. Nunca dura mucho.' });
+
+    const modal = openModal(`
+      <div class="reaction">
+        <div class="live"><span class="live-dot"></span>EN VIVO · reacciones al anuncio</div>
+        <div class="feed">${items.map((it, i) => `
+          <div class="feed-item" style="animation-delay:${0.15 + i * 0.45}s">
+            <span class="feed-ava">${it.ico ? `<span class="feed-ico">${icon(it.ico, { size: 22 })}</span>` : it.who ? avatar(it.who) : face(it.mood, 44)}</span>
+            <div><small>${it.name}</small><p>${it.text}</p></div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" data-paper>Ver el diario del trimestre</button></div>`, { dismissible: false });
+    const ticker = modal.querySelector('.ticker');
+    if (ticker) {
+        const from = Number(ticker.dataset.from), to = Number(ticker.dataset.to), t0 = performance.now() + 300;
+        const tick = t => {
+            const k = Math.max(0, Math.min(1, (t - t0) / 1200));
+            ticker.textContent = `S/ ${(from + (to - from) * (1 - (1 - k) ** 3)).toFixed(3)}`;
+            if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    const btn = modal.querySelector('[data-paper]');
+    btn.focus();
+    btn.addEventListener('click', () => { modal.parentElement._close(); onDone(); });
 }
 
 /** Pantalla "última hora": el imprevisto que la proyección no veía. */
@@ -701,7 +756,7 @@ export function playScenario(root, scenario, opts) {
         section = 'noticias';
         seen = new Set(['noticias']);
         move = 0;
-        const reveal = () => { if (!m.isOver) { render(); flashMeters(rec); } showNewspaper(rec); busy = false; };
+        const reveal = () => { if (!m.isOver) { render(); flashMeters(rec); } showReaction(rec, () => { showNewspaper(rec); busy = false; }); };
         if (rec.surprise) {
             showBreaking(rec.surprise, { onClose: reveal });
             const steps = opts.coachSteps?.surprise?.[rec.quarter];

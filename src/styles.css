@@ -1018,3 +1018,17 @@ button.tcard:hover:not([disabled]) { transform: translateY(-1px); border-color: 
 .tcard:not(.on) .tcard-desc { display: none; }
 .envy { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; background: var(--warn-bg); color: #6b4300; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
 .envy .ico { flex: none; margin-top: 1px; color: var(--warn); }
+
+/* ================= Reacción en vivo ================= */
+.reaction .live { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 800; letter-spacing: .06em; color: var(--red); margin-bottom: 12px; }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: blink 1s ease-in-out infinite; }
+.feed { display: grid; gap: 10px; }
+.feed-item { display: flex; gap: 12px; align-items: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; opacity: 0; animation: feedIn .4s cubic-bezier(.2, .8, .2, 1) forwards; }
+.feed-item small { color: var(--muted); font-size: 12px; font-weight: 600; }
+.feed-item p { margin: 2px 0 0; font-size: 15px; color: var(--ink); }
+.feed-ava { flex: none; }
+.feed-ava .avatar { width: 44px; height: 44px; box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--c, var(--line)); }
+.ticker { font-size: 17px; color: var(--navy); }
+@keyframes feedIn { from { opacity: 0; transform: translateX(-12px) scale(.98); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .feed-item { opacity: 1; } }
+.feed-ico { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: #f1e9fb; color: #6b3fa0; }
