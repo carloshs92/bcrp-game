@@ -1016,3 +1016,5 @@ button.tcard:hover:not([disabled]) { transform: translateY(-1px); border-color: 
 @media (max-width: 640px) { .tcard-desc { display: none; } }
 /* Menos texto: la descripción solo se ve en la herramienta elegida. */
 .tcard:not(.on) .tcard-desc { display: none; }
+.envy { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; background: var(--warn-bg); color: #6b4300; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+.envy .ico { flex: none; margin-top: 1px; color: var(--warn); }

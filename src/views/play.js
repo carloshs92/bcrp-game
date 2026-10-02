@@ -351,7 +351,7 @@ export function playScenario(root, scenario, opts) {
         if (id === 'noticias') return m.event.title;
         if (id === 'estado') {
             const asks = m.event.asks === 'bajar' ? ' · te piden bajar la tasa' : '';
-            return `Congreso ${congressMood(m.pressure).label.toLowerCase()}${asks}${m.congress.promise ? ' · promesa vigente' : ''}`;
+            return `Congreso ${congressMood(m.pressure).label.toLowerCase()}${lastRec?.envy ? ' · le molesta tu éxito' : ''}${asks}${m.congress.promise ? ' · promesa vigente' : ''}`;
         }
         if (id === 'directorio') {
             const a = m.advisors();
@@ -402,6 +402,7 @@ export function playScenario(root, scenario, opts) {
                 <small>Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ` · te cita desde ${CONGRESS.citeAt}` : ''} · en 100 piden tu salida</small>
               </div>
             </div>
+            ${lastRec?.envy ? `<div class="envy">${icon('flame', { size: 16 })}<span><strong>Les molesta tu éxito.</strong> Con la inflación en meta y el BCR bien visto, algunos congresistas buscan protagonismo criticándote (+${Math.round(lastRec.envy)} de enojo).</span></div>` : ''}
             ${lastRec?.declaration ? `<blockquote class="bubble cg-quote">“${lastRec.declaration.text}”<cite>Frase real de un congresista (${lastRec.declaration.year}, ${lastRec.declaration.context})</cite></blockquote>` : '<p class="quiet">Por ahora no hay declaraciones nuevas. No te confíes.</p>'}
             ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre.</div>' : ''}
             ${laws.length ? `<div class="laws"><small>Leyes en vigor que afectan la economía</small>${laws.map(b => `<span class="law">${icon(BILL_ICON[b.id] ?? 'scroll', { size: 14 })}${b.title.replace(/^Proyecto de ley: /, '')}</span>`).join('')}</div>` : ''}

@@ -104,3 +104,21 @@ test('proyectos de ley: todos traen fuente y el hecho real en que se basan', asy
         assert.ok(b.basis.length > 30, b.id);
     }
 });
+
+test('Congreso: el éxito también molesta, pero la envidia sola nunca pasa del tope', async () => {
+    const { default: Mandate, CONGRESS } = await import('../src/game/mandate.js');
+    let envied = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+        const m = new Mandate(seed);
+        while (!m.isOver) {
+            m.congress.pending = null;
+            m.congress.pendingBill = null;
+            const rec = m.decide(m.advisors().dove.rate);
+            if (rec.envy > 0) {
+                envied++;
+                assert.ok(rec.envyTo <= CONGRESS.envyCap + 1e-9, `la envidia llevó el enojo a ${rec.envyTo}`);
+            }
+        }
+    }
+    assert.ok(envied > 0, 'a un BCR exitoso le llega la envidia alguna vez');
+});

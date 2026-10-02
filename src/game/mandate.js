@@ -49,8 +49,19 @@ export const CONGRESS = {
     citeGap: 2,        // turnos mínimos entre citaciones
     billGap: 2,        // turnos mínimos entre proyectos de ley
     billBase: 0.18,    // probabilidad base de un proyecto por turno (+ enojo / 300)
-    insistAt: 75       // con este enojo, aprueban el proyecto aunque te opongas (por insistencia)
+    insistAt: 75,      // con este enojo, aprueban el proyecto aunque te opongas (por insistencia)
+    envy: 4,           // el éxito también molesta: enojo extra por turno con la inflación en meta y prestigio
+    envyCred: 65,      // desde esta credibilidad, el BCR "se lleva los aplausos"
+    envyCap: 60        // la envidia sola nunca te saca: llega justo a la zona de citaciones, no más
 };
+
+/** Cuando al BCR le va bien, algunos congresistas buscan protagonismo. Notas de juego, no citas reales. */
+const ENVY_NOTES = [
+    'Te va bien y eso incomoda: algunos congresistas salen en los medios a decir que el BCR "no hace nada por la gente".',
+    'Con la inflación en meta, en el Congreso se preguntan por qué el BCR acumula tantas reservas "sin usarlas".',
+    'Tu prestigio crece y varios congresistas buscan protagonismo criticando al BCR.',
+    'Las encuestas aplauden al BCR y eso no le gusta a todos en el Congreso: piden que rindas cuentas otra vez.'
+];
 
 /**
  * El comunicado (guía futura): lo que el BCR dice sobre sus próximos pasos.
@@ -501,6 +512,14 @@ export default class Mandate {
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
         let pressure = this.pressure + (CONGRESS.start - this.pressure) * CONGRESS.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
         pressure += (surprise?.pressure ?? 0) + voice.pressure + (tool?.effect.pressure ?? 0);
+        // El éxito también molesta (envidia, ganas de figurar), pero solo hasta un tope.
+        let envy = 0, envyTo = null;
+        if (!this.reference && inBand(s.inflation) && s.credibility >= CONGRESS.envyCred && pressure < CONGRESS.envyCap) {
+            envy = Math.min(CONGRESS.envyCap - pressure, CONGRESS.envy * (1 + 0.5 * Math.min(this.streak, 2)));
+            pressure += envy;
+            envyTo = pressure;
+            notes.push({ tone: 'warn', text: ENVY_NOTES[this.quarter % ENVY_NOTES.length] });
+        }
         if (event.asks === 'bajar') {
             if (move > 0) {
                 pressure += event.pressure * CONGRESS.askWeight;
@@ -552,6 +571,9 @@ export default class Mandate {
         record.fx = fxRecord;
         record.tone = tone;
         record.tool = tool?.id ?? null;
+        record.envy = envy;
+        record.envyTo = envyTo;
+        this.lastEnvy = envy;
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
         const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];
