@@ -1060,3 +1060,26 @@ button.tcard:hover:not([disabled]) { transform: translateY(-1px); border-color: 
 .ach.locked .ach-ico { background: var(--surface-2); color: var(--muted); }
 .achievements.gallery { max-height: 60vh; overflow: auto; padding: 8px 2px; }
 .suspense-quip { margin-top: 12px; font-size: 13px; font-style: italic; color: var(--muted); animation: fade .6s ease .5s backwards; }
+
+/* ================= Votación del Directorio ================= */
+.board { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+.board.quiet { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); }
+.board.quiet strong { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); }
+.board .fx-head strong { display: inline-flex; align-items: center; gap: 6px; }
+.board.no { border-color: #e4b8b4; background: var(--bad-bg); }
+.seats { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin: 8px 0 6px; }
+.seat { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 6px 2px; border-radius: 10px; background: var(--surface); border: 1.5px solid var(--line); transition: transform .2s; }
+.seat small { font-size: 11px; font-weight: 700; color: var(--ink-2); line-height: 1.1; }
+.seat-ico { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; }
+.seat.yes .seat-ico { background: var(--good-bg); color: var(--good); }
+.seat.no .seat-ico { background: var(--bad-bg); color: var(--bad); }
+.seat.me { border-color: var(--navy); }
+.seat.talked { border-color: #f2b705; animation: pop .4s ease; }
+.seat-pref { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.seat-talk { font-size: 10.5px; font-weight: 700; padding: 2px 6px; border-radius: 999px; border: 1px solid var(--navy-2); background: #fff; color: var(--navy-2); cursor: pointer; }
+.seat-talk:hover { background: var(--navy-2); color: #fff; }
+.board-note { display: block; font-size: 11.5px; color: var(--muted); }
+@media (max-width: 640px) {
+    .seats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .board-note { display: none; }
+}

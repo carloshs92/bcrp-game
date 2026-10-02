@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import Mandate, { QUARTERS } from '../src/game/mandate.js';
+import Mandate, { QUARTERS, FREE_SCENARIO, BOARD_RULES } from '../src/game/mandate.js';
 import { staffRecommendation } from '../src/model/economy.js';
 
 const SEEDS = 200;
@@ -12,10 +12,10 @@ function answerCongress(m) {
 }
 
 // Tasa de reelección de una estrategia sobre muchas semillas.
-function reappointRate(strategy) {
+function reappointRate(strategy, scenario = FREE_SCENARIO) {
     let won = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
-        const m = new Mandate(seed);
+        const m = new Mandate(seed, scenario);
         while (!m.isOver) { answerCongress(m); m.decide(Math.max(0.25, strategy(m))); }
         if (m.evaluate().reappointed) won++;
     }
@@ -46,10 +46,35 @@ test('balance: no mover la tasa casi nunca gana', () => {
     assert.ok(reappointRate(m => m.state.rate) < 0.15);
 });
 
-test('balance: ceder siempre a la presión política rinde menos que resistir', () => {
-    const staff = reappointRate(m => staffRecommendation(m.state));
-    const cede = reappointRate(m => m.event.asks === 'bajar' ? m.state.rate - 0.5 : staffRecommendation(m.state));
+test('balance: ceder siempre a la presión política rinde menos que resistir (sin el freno del Directorio)', () => {
+    // Con el Directorio votando, las bajadas sin respaldo se frenan: la lección económica se mide sin él.
+    const solo = { ...FREE_SCENARIO, board: false };
+    const staff = reappointRate(m => staffRecommendation(m.state), solo);
+    const cede = reappointRate(m => m.event.asks === 'bajar' ? m.state.rate - 0.5 : staffRecommendation(m.state), solo);
     assert.ok(cede < staff, `cede=${cede} staff=${staff}`);
+});
+
+test('Directorio: frena los movimientos sin mayoría y perder la votación cuesta credibilidad', () => {
+    const m = new Mandate(3);
+    m.congress.pending = null;
+    m.congress.pendingBill = null;
+    const crazy = m.state.rate - 0.75 - 0.75; // nadie en el Directorio quiere esto
+    const vote = m.boardVote(crazy - m.state.rate);
+    assert.equal(vote.passes, false);
+    const twin = new Mandate(3, { ...FREE_SCENARIO, board: false });
+    twin.congress.pending = null;
+    twin.congress.pendingBill = null;
+    const rec = m.decide(crazy);
+    twin.decide(twin.state.rate);
+    assert.equal(rec.rate, m.history.at(-2).rate, 'sin mayoría la tasa se mantiene');
+    assert.ok(rec.state.credibility <= twin.history.at(-1).state.credibility + BOARD_RULES.lost + 1e-9);
+});
+
+test('Directorio: mantener la tasa nunca necesita votación', () => {
+    const m = new Mandate(5);
+    m.congress.pending = null;
+    m.congress.pendingBill = null;
+    assert.equal(m.decide(m.state.rate).board, null);
 });
 
 test('la proyección responde a la tasa elegida', () => {

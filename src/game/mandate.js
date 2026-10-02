@@ -1,5 +1,5 @@
 import { TOOL_BY_ID } from './toolbox.js';
-import { createState, step, inBand, neutralRate, PARAMS } from '../model/economy.js';
+import { createState, step, inBand, neutralRate, PARAMS, staffRecommendation } from '../model/economy.js';
 import { EVENTS, EVENT_BY_ID, SURPRISES, SURPRISE_BY_ID } from '../model/events.js';
 import { rateMoods, regionMoods } from './people.js';
 import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, BILLS, BILL_RESPONSES, pickDeclaration } from '../model/congress.js';
@@ -55,6 +55,21 @@ export const CONGRESS = {
     envyCap: 60        // la envidia sola nunca te saca: llega justo a la zona de citaciones, no más
 };
 
+/**
+ * El Directorio (art. 86 de la Constitución): 7 miembros; el Ejecutivo designa 4 (incluido el presidente,
+ * que eres tú) y el Congreso elige 3. Ninguno representa intereses particulares: aquí cada uno tiene
+ * su criterio. Votan a favor si tu propuesta está a 25 pb o menos de lo que prefieren.
+ */
+export const BOARD = [
+    { id: 'tecnica', role: 'La técnica', origin: 'Ejecutivo', style: 'Sigue la regla del equipo técnico.' },
+    { id: 'halcon', role: 'El halcón', origin: 'Ejecutivo', style: 'Teme más a la inflación que a la recesión.' },
+    { id: 'prudente', role: 'La prudente', origin: 'Ejecutivo', style: 'Prefiere pasos cortos: la mitad de lo que pide el staff.' },
+    { id: 'paloma', role: 'La paloma', origin: 'Congreso', style: 'Teme más al desempleo que a la inflación.' },
+    { id: 'empleo', role: 'El del empleo', origin: 'Congreso', style: 'A medio camino entre el staff y la paloma.' },
+    { id: 'veterano', role: 'El veterano', origin: 'Congreso', style: 'No le gustan los bandazos: prefiere seguir la dirección del último movimiento.' }
+];
+export const BOARD_RULES = { tolerance: 0.5, majority: 4, unanimous: 1, split: -1, lost: -5, reach: 0.75 };
+
 /** Momento decisivo: margen frente al BCRP real y premio o castigo de credibilidad. */
 export const CLIMAX = { inflationSlack: 0.25, growthSlack: 1.0, reward: 6, penalty: 6 };
 
@@ -92,6 +107,7 @@ export function guidanceEffect(state, tone) {
 
 export const FREE_SCENARIO = {
     id: 'libre',
+    board: true, // el Directorio vota tus propuestas
     title: 'Modo libre',
     turns: 12,
     startYear: 2027,
@@ -201,7 +217,7 @@ export default class Mandate {
         this.scheduled = null;
         this.calmCount = 0;
         this.gameOver = null;
-        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0, maxPressure: 0, envyTurns: 0, combos: 0, climaxWon: false };
+        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0, maxPressure: 0, envyTurns: 0, combos: 0, climaxWon: false, convinced: 0, lostVotes: 0 };
         this.tools = (scenario.tools ?? []).map(t => ({ ...t, left: t.uses ?? 1 }));
         this.effects = []; // efectos de herramientas que duran varios turnos
         // El comunicado existe desde las metas de inflación (2002); el tutorial y 1990 no lo usan.
@@ -386,6 +402,33 @@ export default class Mandate {
         return this.fx ? Math.max(0, this.fx.reserves - 0.3 * this.fx.initialReserves) : 0;
     }
 
+    /** Lo que prefiere cada director este turno (movimiento de tasa). */
+    boardPrefs() {
+        const s = this.state;
+        const snap = mv => this.moves.reduce((best, x) => Math.abs(x - mv) < Math.abs(best - mv) ? x : best, 0);
+        const floor = mv => Math.max(this.minRate - s.rate, mv);
+        const a = this.advisors();
+        const staff = staffRecommendation(s) - s.rate;
+        const last = this.history.length > 1 ? this.history.at(-1).rate - this.history.at(-2).rate : 0;
+        const pref = {
+            tecnica: staff,
+            halcon: a.hawk.rate - s.rate,
+            prudente: staff / 2,
+            paloma: a.dove.rate - s.rate,
+            empleo: (staff + a.dove.rate - s.rate) / 2,
+            veterano: clamp(Math.sign(last) * 0.25, staff - 0.25, staff + 0.25)
+        };
+        return BOARD.map(d => ({ ...d, pref: floor(snap(pref[d.id])) }));
+    }
+
+    /** Votación de tu propuesta; `convinced` = un director que aceptó escucharte este turno. */
+    boardVote(move, convinced = null) {
+        const prefs = this.boardPrefs();
+        const votes = prefs.map(d => ({ ...d, yes: Math.abs(d.pref - move) <= BOARD_RULES.tolerance + 1e-9 || (d.id === convinced && Math.abs(d.pref - move) <= BOARD_RULES.reach + 1e-9) }));
+        const yes = 1 + votes.filter(v => v.yes).length; // tú votas a favor
+        return { votes, yes, passes: yes >= BOARD_RULES.majority };
+    }
+
     projection(rate, sell = 0, tone = 'neutral', toolId = null) {
         const g = guidanceEffect(this.state, this.guidanceOn ? tone : 'neutral');
         const tool = this.toolReady(toolId) ? TOOL_BY_ID[toolId].effect : null;
@@ -417,7 +460,7 @@ export default class Mandate {
         return true;
     }
 
-    decide(newRate, sell = 0, tone = 'neutral', toolId = null) {
+    decide(newRate, sell = 0, tone = 'neutral', toolId = null, { convinced = null } = {}) {
         // Un proyecto de ley sin respuesta se da por "no opinar".
         if (this.congress.pendingBill) this.answerBill(2);
         newRate = Math.max(this.minRate, newRate);
@@ -426,6 +469,13 @@ export default class Mandate {
         const prev = this.state;
         const prevPressure = this.pressure;
         const event = this.event;
+        // El Directorio vota (modo libre): un cambio sin mayoría no se aprueba y la tasa se mantiene.
+        let board = null;
+        if (this.scenario.board && !this.reference && newRate !== prev.rate) {
+            board = this.boardVote(newRate - prev.rate, convinced);
+            board.proposed = newRate - prev.rate;
+            if (!board.passes) newRate = prev.rate;
+        }
         const move = newRate - prev.rate;
         const notes = [];
         const surprise = this.drawSurprise();
@@ -523,6 +573,22 @@ export default class Mandate {
             if (cred) s = { ...s, credibility: clamp(s.credibility + cred, 0, 100) };
         }
         this.lastTool = tool?.id ?? null;
+        if (board) {
+            const tally = `${board.yes}–${7 - board.yes}`;
+            if (!board.passes) {
+                s = { ...s, credibility: Math.max(0, s.credibility + BOARD_RULES.lost) };
+                notes.push({ tone: 'bad', text: `Tu propuesta perdió la votación (${tally}): sin mayoría no hay cambio y la tasa se mantiene. Un presidente sin respaldo pierde credibilidad.` });
+                // Proponer ceder ya es una señal: el mercado conoce la propuesta aunque el Directorio la frene.
+                if (board.proposed < 0 && event.asks === 'bajar' && prev.inflation > this.params.bandMax) {
+                    s = { ...s, credibility: Math.max(0, s.credibility - 7) };
+                    this.stats.ceded += 1;
+                    notes.push({ tone: 'bad', text: 'Se supo que propusiste bajar la tasa por presión política con la inflación sobre la meta. El Directorio te frenó, pero el mercado ya duda de ti.' });
+                }
+            }
+            else if (board.yes === 7) { s = { ...s, credibility: Math.min(100, s.credibility + BOARD_RULES.unanimous) }; notes.push({ tone: 'good', text: 'Decisión unánime (7–0): el mercado ve un Directorio unido.' }); }
+            else if (board.yes === BOARD_RULES.majority) { s = { ...s, credibility: Math.max(0, s.credibility + BOARD_RULES.split) }; notes.push({ tone: 'warn', text: `Votación ajustada (${tally}): el mercado nota un Directorio dividido.` }); }
+            if (convinced) this.stats.convinced += 1;
+        }
 
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
@@ -599,6 +665,8 @@ export default class Mandate {
         record.tone = tone;
         record.tool = tool?.id ?? null;
         record.climax = climax;
+        record.board = board;
+        if (board && !board.passes) this.stats.lostVotes += 1;
         record.climaxWon = climaxWon;
         if (climaxWon) this.stats.climaxWon = true;
         if (envy > 0) this.stats.envyTurns += 1;

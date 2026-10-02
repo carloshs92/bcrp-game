@@ -1,4 +1,4 @@
-import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES, CLIMAX } from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES, CLIMAX, BOARD_RULES } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -358,6 +358,32 @@ const SECTIONS = [
     { id: 'anuncio', ico: 'gavel', kicker: 'Qué decides', title: 'El anuncio' }
 ];
 
+/** Votación del Directorio (modo libre): 7 votos, necesitas 4. Una vez por turno puedes convencer a alguien cercano. */
+function boardBlock(m, move, convinced) {
+    const ico = { tecnica: 'scale', halcon: 'up', prudente: 'equal', paloma: 'down', empleo: 'briefcase', veterano: 'book' };
+    if (move === 0) return `<div class="board quiet"><strong>${icon('people', { size: 16 })} Directorio</strong><span>Mantener la tasa no necesita votación.</span></div>`;
+    const v = m.boardVote(move, convinced);
+    const mv = x => x === 0 ? 'mantener' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}`;
+    return `
+      <div class="board ${v.passes ? 'ok' : 'no'}">
+        <div class="fx-head"><strong>${icon('people', { size: 16 })} Votación del Directorio</strong>
+          <span><strong class="num">${v.yes} de 7</strong> a favor · ${v.passes ? (v.yes === 7 ? 'unánime (+1 credibilidad)' : v.yes === 4 ? 'ajustada (−1 credibilidad)' : 'se aprueba') : 'no alcanza: la tasa se mantendría y perderías credibilidad'}</span></div>
+        <div class="seats">
+          <div class="seat yes me" title="Tú, presidente del BCR"><span class="seat-ico">${icon('user', { size: 16 })}</span><small>Tú</small></div>
+          ${v.votes.map(d => {
+            const canTalk = !d.yes && !convinced && Math.abs(d.pref - move) <= BOARD_RULES.reach + 1e-9;
+            return `<div class="seat ${d.yes ? 'yes' : 'no'}${d.id === convinced ? ' talked' : ''}" title="${d.role} (designado por el ${d.origin}). ${d.style} Prefiere: ${mv(d.pref)}.">
+              <span class="seat-ico">${icon(ico[d.id] ?? 'user', { size: 16 })}</span>
+              <small>${d.role.replace(/^(El|La) /, '')}</small>
+              <span class="seat-pref">${mv(d.pref)}</span>
+              ${canTalk ? `<button class="seat-talk" data-convince="${d.id}">Convencer</button>` : ''}
+            </div>`;
+        }).join('')}
+        </div>
+        <small class="board-note">El Ejecutivo designa a 4 directores (incluido tú) y el Congreso elige a 3; ninguno representa intereses particulares. Puedes convencer a uno por turno si tu propuesta está a 75 pb o menos de lo que prefiere.</small>
+      </div>`;
+}
+
 /** Grupos del cuadro "quién gana y quién pierde": ícono y nombre corto. */
 const GROUPS = {
     ahorristas: ['piggy', 'Ahorristas'], jubilados: ['elder', 'Jubilados'], familias: ['home', 'Familias'],
@@ -393,6 +419,7 @@ export function playScenario(root, scenario, opts) {
     let shownRate = null;   // para animar el número cuando cambia la tasa elegida
     let tone = 'neutral';   // el comunicado del turno
     let toolPick = null;    // la herramienta del turno (una sola)
+    let convinced = null;   // el director que aceptó escucharte este turno
     let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
@@ -747,6 +774,7 @@ export function playScenario(root, scenario, opts) {
           <div class="steps" style="grid-template-columns:repeat(${m.moves.length},1fr)" role="radiogroup" aria-label="Cambio de tasa">
             ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" data-dir="${Math.sign(v)}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}><span class="step-main">${v === 0 ? icon('equal', { size: 16 }) : `${icon(v > 0 ? 'up' : 'down', { size: 14 })}${moveLabel(v)}`}</span><small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
+          ${m.scenario.board ? boardBlock(m, move, convinced) : ''}
           ${m.fx ? fxBlock(m, move, sell, diff) : ''}
           ${m.guidanceOn ? guidanceBlock(m, move, tone, diff) : ''}
           ${toolboxBlock(m, toolPick, diff)}
@@ -766,6 +794,7 @@ export function playScenario(root, scenario, opts) {
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-tone]').forEach(b => b.addEventListener('click', () => { tone = b.dataset.tone; music.click(); updateDecision(); }));
+        el.querySelectorAll('[data-convince]').forEach(b => b.addEventListener('click', () => { convinced = b.dataset.convince; music.sting(); updateDecision(); }));
         el.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => { toolPick = toolPick === b.dataset.pick ? null : b.dataset.pick; music.click(); updateDecision(); }));
         el.querySelector('[data-term="comunicado"]')?.addEventListener('click', () => openGlossary('comunicado'));
         el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
@@ -790,7 +819,8 @@ export function playScenario(root, scenario, opts) {
             + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : '')
             + (toolPick ? `. Además: ${TOOL_BY_ID[toolPick].name.toLowerCase()}` : '')
             + (m.guidanceOn && tone !== 'neutral' ? ` «${GUIDANCE[tone].phrase}»` : ''));
-        const rec = m.decide(rate, sell, tone, toolPick);
+        const rec = m.decide(rate, sell, tone, toolPick, { convinced });
+        convinced = null;
         tone = 'neutral';
         toolPick = null;
         sell = 0;
