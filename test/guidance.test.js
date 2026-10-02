@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import Mandate, { GUIDANCE_RULES } from '../src/game/mandate.js';
+import Mandate, { GUIDANCE_RULES, FREE_SCENARIO } from '../src/game/mandate.js';
 import { TUTORIAL } from '../src/model/history.js';
 import { staffRecommendation } from '../src/model/economy.js';
 
+// Sin votación del Directorio: aquí se mide solo el comunicado.
 const ready = seed => {
-    const m = new Mandate(seed);
+    const m = new Mandate(seed, { ...FREE_SCENARIO, board: false });
     m.congress.pending = null;
     m.congress.pendingBill = null;
     return m;

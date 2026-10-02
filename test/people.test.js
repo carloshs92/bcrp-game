@@ -51,3 +51,20 @@ test('las frases de sector varían entre turnos con la misma causa', () => {
     const seen = new Set(Array.from({ length: 3 }, () => sectorVoice(s)));
     assert.ok(seen.size >= 2);
 });
+
+test('informalidad: arranca en el dato del INEI y sube cuando la economía se frena', async () => {
+    const { default: Mandate, FREE_SCENARIO } = await import('../src/game/mandate.js');
+    const m = new Mandate(8, { ...FREE_SCENARIO, board: false });
+    assert.equal(m.informal, 70.2);
+    // Frenar fuerte la economía (alzas grandes) empuja gente a la informalidad.
+    for (let i = 0; i < 4 && !m.isOver; i++) {
+        m.congress.pending = null;
+        m.congress.pendingBill = null;
+        m.decide(m.state.rate + 0.75);
+    }
+    assert.ok(m.informal > 70.2, `informal=${m.informal}`);
+    // Los capítulos históricos no la usan (no hay cifras verificadas por año).
+    const { CHAPTERS } = await import('../src/model/history.js');
+    const ch = CHAPTERS.find(c => c.kind === 'rate');
+    assert.equal(new Mandate(1, ch).informal, null);
+});

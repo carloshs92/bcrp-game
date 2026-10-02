@@ -65,6 +65,12 @@ const SECTOR_VOICES = {
             'Cerró la fábrica. Ahora hago taxi colectivo para sobrevivir.',
             'Ni cachuelos hay. Esta es la peor época que recuerdo.'
         ],
+        informal: [
+            'Me botaron de la fábrica. Ahora vendo emoliente en la esquina: algo es algo.',
+            'Trabajo hay, pero sin contrato, sin seguro y sin CTS. Puro cachuelo.',
+            'Hago taxi por aplicativo de día y mototaxi de noche. Lo que salga, causa.',
+            'Mi hija terminó la universidad y está vendiendo por redes. Formal, nada.'
+        ],
         enfriamiento: [
             'Hay menos pasajeros y menos cachuelos. Las horas extra se acabaron.',
             'En la obra redujeron personal. A mí todavía me tienen, pero con miedo.'
@@ -152,7 +158,7 @@ function dominant(terms, fallback) {
 }
 
 /** Ánimo por sector tras un turno del motor de tasa. */
-export function rateMoods({ state, move, rate, fx = null, tone = 'neutral' }, potentialGrowth = 3) {
+export function rateMoods({ state, move, rate, fx = null, tone = 'neutral', informalUp = 0 }, potentialGrowth = 3) {
     const dep = fx?.dep ?? 0;
     // El comunicado también se siente: anunciar alivio anima a quienes dependen del crédito.
     const talk = tone === 'paloma' ? 0.4 : tone === 'halcon' ? -0.3 : 0;
@@ -172,7 +178,8 @@ export function rateMoods({ state, move, rate, fx = null, tone = 'neutral' }, po
         : famScore > 1.5 ? 'auge' : famScore > 0.5 ? 'alivio' : 'estable';
 
     const trabScore = 0.3 + 0.6 * g + (state.growth < 0 ? -1.5 : 0);
-    const trabCause = ['despidos', 'enfriamiento', 'estable', 'contratan', 'auge'][toMood(trabScore) + 2];
+    // Si la informalidad sube, el golpe no se ve en despidos sino en chamba precaria.
+    const trabCause = informalUp >= 0.4 && state.growth >= 0 ? 'informal' : ['despidos', 'enfriamiento', 'estable', 'contratan', 'auge'][toMood(trabScore) + 2];
 
     const ventas = 0.35 * state.outputGap, tasa = -1.0 * move - 0.15 * Math.max(0, rate - 5);
     const mypeScore = 0.3 + ventas + tasa + talk;

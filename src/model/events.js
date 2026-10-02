@@ -116,6 +116,31 @@ export const EVENTS = [
         shock: { demand: 1.3 }, asks: null
     },
     // ---------- Tier 3: fuertes ----------
+    // ---------- Ruido político (patrones reales del Perú, eventos ficticios y sin nombres) ----------
+    {
+        id: 'cambio-gabinete', tier: 2, kind: 'politica', who: 'prensa',
+        title: 'Otro cambio de gabinete',
+        quote: 'Es el tercer premier en lo que va del periodo. Los inversionistas prefieren esperar antes de decidir nada.',
+        shock: { demand: -0.7, supply: 0.3 }, fx: 2.5, tags: ['politica'], asks: null
+    },
+    {
+        id: 'elecciones-polarizadas', tier: 2, kind: 'politica', who: 'cambista',
+        title: 'Elecciones polarizadas',
+        quote: 'Con estas encuestas la gente viene a comprar dólares "por si acaso". Hoy no me alcanza el sencillo, jefe.',
+        shock: { demand: -0.6, supply: 0.5 }, fx: 4, tags: ['politica', 'dolar'], asks: null
+    },
+    {
+        id: 'paro-regional', tier: 2, kind: 'oferta', who: 'agricultor',
+        title: 'Paro y bloqueos en el sur',
+        quote: 'Las carreteras están tomadas: no podemos sacar la cosecha y en Lima los precios ya se movieron.',
+        shock: { supply: 1.1, demand: -0.5 }, tags: ['politica', 'transporte'], asks: 'bajar', pressure: 8
+    },
+    {
+        id: 'mocion-vacancia', tier: 3, kind: 'politica', who: 'prensa',
+        title: 'El Congreso debate una moción de vacancia',
+        quote: 'Otra vez la vacancia presidencial en agenda. El dólar salta y las empresas congelan sus planes.',
+        shock: { demand: -1.3, supply: 0.4, credibility: -3 }, fx: 5, tags: ['politica'], asks: null
+    },
     {
         id: 'conflicto-minero', tier: 3, kind: 'demanda', who: 'minero',
         title: 'Bloqueo en el corredor minero',

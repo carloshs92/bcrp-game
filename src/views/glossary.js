@@ -1,6 +1,7 @@
 import { openModal } from './modal.js';
 
 export const TERMS = {
+    informalidad: ['Informalidad', 'En 2025, el 70.2% de los trabajadores del Perú tenía un empleo informal: sin contrato, seguro ni pensión (INEI). Funciona como un colchón: cuando la economía se frena, mucha gente no queda desempleada, sino que pasa a trabajar en la informalidad. Un estudio del BCRP (2026) encuentra que eso también hace que la tasa de interés llegue con menos fuerza a una parte de la economía.'],
     comunicado: ['Comunicado (guía futura)', 'Junto con la tasa, el BCRP publica un comunicado que da pistas de sus próximos pasos. Si la gente le cree, las expectativas se mueven de inmediato, sin esperar a que la tasa haga efecto. Por eso el comunicado vale más cuanto más credibilidad tiene el BCR, y por eso contradecirlo después cuesta caro.'],
     bcrp: ['BCRP', 'Banco Central de Reserva del Perú. Es autónomo y la Constitución le da una finalidad: preservar la estabilidad monetaria, es decir, que el valor del sol no se erosione con la inflación.'],
     inflacion: ['Inflación', 'Aumento generalizado de los precios. Se mide como la variación del índice de precios al consumidor en los últimos 12 meses. Si es 3%, lo que costaba S/ 100 hace un año hoy cuesta S/ 103.'],

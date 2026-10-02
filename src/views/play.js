@@ -1,4 +1,4 @@
-import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES } from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES, CLIMAX, BOARD_RULES } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -8,7 +8,7 @@ import { openGlossary } from './glossary.js';
 import { coach } from './coach.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
 import { getSettings, DIFFICULTIES, getFlag, setFlag } from '../storage.js';
-import { rateTradeoff } from '../game/people.js';
+import { rateTradeoff, sectorVoice } from '../game/people.js';
 import { congressMood, BILL_RESPONSES, ANSWER_EFFECTS, BILLS } from '../model/congress.js';
 import { face } from './people.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
@@ -16,6 +16,8 @@ import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 import { icon, KIND_ICON, hawk, dove, bust, congressScene } from './icons.js';
 import { TOOLBOX, TOOL_BY_ID } from '../game/toolbox.js';
+import { scene } from './scenes.js';
+import { achievementsBlock } from './achievementsView.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -114,6 +116,61 @@ function advisorCard(kind, a, selected) {
     </button>`;
 }
 
+/**
+ * Reacción en vivo: segundos después del anuncio, el país reacciona. El dólar en la pizarra de Pepe,
+ * los analistas, la gente y el Congreso, uno tras otro. Luego, el diario con el trimestre completo.
+ */
+export function showReaction(rec, onDone) {
+    const items = [];
+    if (rec.fx) {
+        const up = rec.fx.dep > 0;
+        items.push({ who: 'cambista', name: 'Pepe, cambista del jirón Ocoña', text: `¡${up ? 'Sube' : 'Baja'} el dólar, ${up ? 'sube' : 'baja'}! Ahorita está a <strong class="num ticker" data-from="${rec.fx.before.rate}" data-to="${rec.fx.rate}">S/ ${rec.fx.before.rate.toFixed(3)}</strong> <span class="${up ? 'txt-bad' : 'txt-good'}">${up ? '▲' : '▼'} ${Math.abs(rec.fx.dep).toFixed(1)}%</span>` });
+    }
+    const dCred = rec.state.credibility - rec.prev.credibility;
+    const exp = `${pct(rec.state.expectations)}`;
+    items.push({
+        who: 'analista', name: 'Analista de una consultora limeña',
+        text: dCred >= 2 ? `El mercado le cree al BCR: las expectativas de inflación quedan en ${exp}.`
+            : dCred <= -3 ? `Los analistas dudan del BCR: las expectativas de inflación suben a ${exp}.`
+                : rec.move > 0 ? 'Los bancos ya anuncian créditos un poco más caros en los próximos meses.'
+                    : rec.move < 0 ? 'Los créditos se irán abaratando en los próximos meses. Las mypes celebran.'
+                        : 'Sin cambios en la tasa: el mercado ya lo esperaba.'
+    });
+    [...rec.people].sort((a, b) => Math.abs(b.mood) - Math.abs(a.mood)).slice(0, 2)
+        .forEach(sct => items.push({ mood: sct.mood, name: sct.who ?? sct.name, text: `“${sectorVoice(sct)}”` }));
+    const dP = rec.pressure - rec.prevPressure;
+    items.push(rec.declaration
+        ? { ico: 'congress', name: `Desde el Congreso · frase real de un congresista (${rec.declaration.year})`, text: `“${rec.declaration.text}”` }
+        : rec.envy ? { ico: 'congress', name: 'Desde el Congreso', text: 'Les incomoda que al BCR le vaya bien: ya hay quienes piden que vengas a explicar "qué haces con tanta plata".' }
+            : dP >= 6 ? { ico: 'congress', name: 'Desde el Congreso', text: `Las críticas al BCR suben de tono (+${Math.round(dP)} de enojo).` }
+                : { ico: 'congress', name: 'Desde el Congreso', text: 'Por ahora, silencio. Nunca dura mucho.' });
+
+    const modal = openModal(`
+      <div class="reaction">
+        <div class="live"><span class="live-dot"></span>EN VIVO · reacciones al anuncio</div>
+        <div class="feed">${items.map((it, i) => `
+          <div class="feed-item" style="animation-delay:${0.15 + i * 0.45}s">
+            <span class="feed-ava">${it.ico ? `<span class="feed-ico">${icon(it.ico, { size: 22 })}</span>` : it.who ? avatar(it.who) : face(it.mood, 44)}</span>
+            <div><small>${it.name}</small><p>${it.text}</p></div>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="modal-actions"><button class="btn btn-primary" data-paper>Ver el diario del trimestre</button></div>`, { dismissible: false });
+    const ticker = modal.querySelector('.ticker');
+    if (ticker) {
+        const from = Number(ticker.dataset.from), to = Number(ticker.dataset.to), t0 = performance.now() + 300;
+        const tick = t => {
+            const k = Math.max(0, Math.min(1, (t - t0) / 1200));
+            ticker.textContent = `S/ ${(from + (to - from) * (1 - (1 - k) ** 3)).toFixed(3)}`;
+            if (k < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    const btn = modal.querySelector('[data-paper]');
+    btn.focus();
+    btn.addEventListener('click', () => { modal.parentElement._close(); onDone(); });
+}
+
 /** Pantalla "última hora": el imprevisto que la proyección no veía. */
 export function showBreaking(surprise, { onClose }) {
     music.setMood('surprise');
@@ -131,11 +188,31 @@ export function showBreaking(surprise, { onClose }) {
 }
 
 /** Pausa dramática mientras el Directorio "anuncia" la decisión. */
-export async function announceSuspense(text) {
+/** Mientras el país espera el anuncio (humor de fondo; en 1990 no había redes sociales). */
+const QUIPS = {
+    hoy: [
+        'Mientras tanto, en el jirón Ocoña, Pepe ya está borrando su pizarra…',
+        'En el Congreso alguien ya tiene el tuit listo, por si acaso…',
+        'Don Mario frenó la combi para escuchar la noticia…',
+        'La caserita de Surquillo subió el volumen de la radio…',
+        'Los analistas ya tienen su gráfico listo para decir «se los dije»…',
+        'En la sala del Directorio se acabó el café pasado…',
+        'Perú es clave… y esta decisión también.'
+    ],
+    1990: [
+        'En la cola del pan nadie habla de otra cosa…',
+        'El cambista de la esquina ya cambió su cartel tres veces hoy…',
+        'Las radios interrumpen la música para el anuncio…',
+        'En la bodega, el caserito espera antes de remarcar los precios…'
+    ]
+};
+
+export async function announceSuspense(text, { era = 'hoy' } = {}) {
     music.setMood('announce');
+    const quips = QUIPS[era] ?? QUIPS.hoy;
     const overlay = document.createElement('div');
     overlay.className = 'suspense';
-    overlay.innerHTML = `<div class="suspense-card">${andeanBand}<div class="suspense-title">Nota Informativa del Programa Monetario</div><div class="suspense-text">${text}</div><div class="suspense-dots"><i></i><i></i><i></i></div></div>`;
+    overlay.innerHTML = `<div class="suspense-card">${andeanBand}<div class="suspense-title">Nota Informativa del Programa Monetario</div><div class="suspense-text">${text}</div><div class="suspense-dots"><i></i><i></i><i></i></div><div class="suspense-quip">${quips[Math.floor(Math.random() * quips.length)]}</div></div>`;
     document.body.appendChild(overlay);
     await sleep(2100);
     overlay.remove();
@@ -281,6 +358,46 @@ const SECTIONS = [
     { id: 'anuncio', ico: 'gavel', kicker: 'Qué decides', title: 'El anuncio' }
 ];
 
+/** Informalidad: el colchón del mercado laboral peruano (y su costo: chamba sin derechos). */
+function informalCard(m, rec) {
+    const d = rec?.informal ? rec.informal.after - rec.informal.before : 0;
+    return `
+      <section class="card informal-card">
+        <h3><span class="h-ico">${icon('briefcase', { size: 16 })}</span>Empleo informal ${help('informalidad')}</h3>
+        <div class="inf-row"><strong class="num">${m.informal.toFixed(1)}%</strong>
+          ${Math.abs(d) >= 0.05 ? `<span class="${d > 0 ? 'txt-bad' : 'txt-good'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d).toFixed(1)} pp</span>` : ''}
+          <span class="inf-sub">de los trabajadores, sin contrato, seguro ni pensión</span></div>
+        <div class="meter-track"><span class="meter-fill" style="width:${m.informal}%"></span></div>
+        <p class="inf-note">${d > 0.3 ? 'La economía crece por debajo de su potencial: en vez de quedarse sin trabajo, la gente pasa a la chamba informal.' : d < -0.3 ? 'Con la economía creciendo, vuelve el empleo formal.' : 'Siete de cada diez trabajan en la informalidad: por eso la tasa llega con menos fuerza a la bodega y a la combi.'}</p>
+      </section>`;
+}
+
+/** Votación del Directorio (modo libre): 7 votos, necesitas 4. Una vez por turno puedes convencer a alguien cercano. */
+function boardBlock(m, move, convinced) {
+    const ico = { tecnica: 'scale', halcon: 'up', prudente: 'equal', paloma: 'down', empleo: 'briefcase', veterano: 'book' };
+    if (move === 0) return `<div class="board quiet"><strong>${icon('people', { size: 16 })} Directorio</strong><span>Mantener la tasa no necesita votación.</span></div>`;
+    const v = m.boardVote(move, convinced);
+    const mv = x => x === 0 ? 'mantener' : `${x > 0 ? '+' : '−'}${Math.abs(x).toFixed(2)}`;
+    return `
+      <div class="board ${v.passes ? 'ok' : 'no'}">
+        <div class="fx-head"><strong>${icon('people', { size: 16 })} Votación del Directorio</strong>
+          <span><strong class="num">${v.yes} de 7</strong> a favor · ${v.passes ? (v.yes === 7 ? 'unánime (+1 credibilidad)' : v.yes === 4 ? 'ajustada (−1 credibilidad)' : 'se aprueba') : 'no alcanza: la tasa se mantendría y perderías credibilidad'}</span></div>
+        <div class="seats">
+          <div class="seat yes me" title="Tú, presidente del BCR"><span class="seat-ico">${icon('user', { size: 16 })}</span><small>Tú</small></div>
+          ${v.votes.map(d => {
+            const canTalk = !d.yes && !convinced && Math.abs(d.pref - move) <= BOARD_RULES.reach + 1e-9;
+            return `<div class="seat ${d.yes ? 'yes' : 'no'}${d.id === convinced ? ' talked' : ''}" title="${d.role} (designado por el ${d.origin}). ${d.style} Prefiere: ${mv(d.pref)}.">
+              <span class="seat-ico">${icon(ico[d.id] ?? 'user', { size: 16 })}</span>
+              <small>${d.role.replace(/^(El|La) /, '')}</small>
+              <span class="seat-pref">${mv(d.pref)}</span>
+              ${canTalk ? `<button class="seat-talk" data-convince="${d.id}">Convencer</button>` : ''}
+            </div>`;
+        }).join('')}
+        </div>
+        <small class="board-note">El Ejecutivo designa a 4 directores (incluido tú) y el Congreso elige a 3; ninguno representa intereses particulares. Puedes convencer a uno por turno si tu propuesta está a 75 pb o menos de lo que prefiere.</small>
+      </div>`;
+}
+
 /** Grupos del cuadro "quién gana y quién pierde": ícono y nombre corto. */
 const GROUPS = {
     ahorristas: ['piggy', 'Ahorristas'], jubilados: ['elder', 'Jubilados'], familias: ['home', 'Familias'],
@@ -316,6 +433,7 @@ export function playScenario(root, scenario, opts) {
     let shownRate = null;   // para animar el número cuando cambia la tasa elegida
     let tone = 'neutral';   // el comunicado del turno
     let toolPick = null;    // la herramienta del turno (una sola)
+    let convinced = null;   // el director que aceptó escucharte este turno
     let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
@@ -351,7 +469,7 @@ export function playScenario(root, scenario, opts) {
         if (id === 'noticias') return m.event.title;
         if (id === 'estado') {
             const asks = m.event.asks === 'bajar' ? ' · te piden bajar la tasa' : '';
-            return `Congreso ${congressMood(m.pressure).label.toLowerCase()}${asks}${m.congress.promise ? ' · promesa vigente' : ''}`;
+            return `Congreso ${congressMood(m.pressure).label.toLowerCase()}${lastRec?.envy ? ' · le molesta tu éxito' : ''}${asks}${m.congress.promise ? ' · promesa vigente' : ''}`;
         }
         if (id === 'directorio') {
             const a = m.advisors();
@@ -402,6 +520,7 @@ export function playScenario(root, scenario, opts) {
                 <small>Enojo ${Math.round(m.pressure)}/100${m.scenario.citations ? ` · te cita desde ${CONGRESS.citeAt}` : ''} · en 100 piden tu salida</small>
               </div>
             </div>
+            ${lastRec?.envy ? `<div class="envy">${icon('flame', { size: 16 })}<span><strong>Les molesta tu éxito.</strong> Con la inflación en meta y el BCR bien visto, algunos congresistas buscan protagonismo criticándote (+${Math.round(lastRec.envy)} de enojo).</span></div>` : ''}
             ${lastRec?.declaration ? `<blockquote class="bubble cg-quote">“${lastRec.declaration.text}”<cite>Frase real de un congresista (${lastRec.declaration.year}, ${lastRec.declaration.context})</cite></blockquote>` : '<p class="quiet">Por ahora no hay declaraciones nuevas. No te confíes.</p>'}
             ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre.</div>' : ''}
             ${laws.length ? `<div class="laws"><small>Leyes en vigor que afectan la economía</small>${laws.map(b => `<span class="law">${icon(BILL_ICON[b.id] ?? 'scroll', { size: 14 })}${b.title.replace(/^Proyecto de ley: /, '')}</span>`).join('')}</div>` : ''}
@@ -429,7 +548,8 @@ export function playScenario(root, scenario, opts) {
         </header>
         <div class="andean-strip">${andeanBand}</div>
         ${missionBar(m, opts)}
-        <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
+        <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}${isClimax() ? ' climax' : ''}">
+          ${isClimax() ? `<div class="climax-banner">${icon('flame', { size: 18 })}<strong>Momento decisivo:</strong> ${m.scenario.climax.title}. Te comparas con el BCRP real (±${CLIMAX.reward} de credibilidad).</div>` : ''}
           <div class="meters${m.fx ? ' five' : ''}">${meters(m)}</div>
           <nav class="turn-nav" role="tablist" aria-label="Secciones del turno">${SECTIONS.map((sec, i) => `
             <button role="tab" data-goto="${sec.id}" aria-selected="${sec.id === section}" class="${sec.id === section ? 'on' : ''}${seen.has(sec.id) ? '' : ' unseen'}">
@@ -444,7 +564,7 @@ export function playScenario(root, scenario, opts) {
                 ${eventCard(m.event)}
                 ${lastRec ? `<section class="card last-paper"><h3><span class="h-ico">${icon('book', { size: 16 })}</span>El diario del trimestre pasado</h3><p class="lp-head">${lastRec.headline}</p></section>` : ''}
               </div>
-              <div class="col">${peoplePanel(lastPeople, { regions: lastRegions })}</div>
+              <div class="col">${peoplePanel(lastPeople, { regions: lastRegions })}${m.informal !== null ? informalCard(m, lastRec) : ''}</div>
             </div>
             ${panelNext('estado')}
           </section>
@@ -487,7 +607,29 @@ export function playScenario(root, scenario, opts) {
     };
 
     // El guion del tutorial para el turno se muestra cuando el turno empieza de verdad.
+    const climaxShown = new Set();
+    const isClimax = () => m.scenario.climax?.turn === m.quarter;
+
+    /** Momento decisivo: el pico de la crisis del capítulo, con su propia pantalla. */
+    const showClimax = () => {
+        const c = m.scenario.climax;
+        climaxShown.add(m.quarter);
+        music.setMood('surprise');
+        music.sting();
+        const modal = openModal(`
+          <div class="climax-intro">
+            <div class="ch-art">${scene(c.scene)}</div>
+            <div class="breaking-tag">${icon('flame', { size: 16 })} MOMENTO DECISIVO</div>
+            <h2>${c.title}</h2>
+            <p class="lead">${c.text}</p>
+            <div class="climax-rule">${icon('scale', { size: 18 })}<span>Este trimestre te comparas con lo que hizo el <strong>BCRP real</strong>, con los mismos imprevistos. Si lo igualas o lo mejoras: <strong>+${CLIMAX.reward} de credibilidad</strong>. Si no: <strong>−${CLIMAX.penalty}</strong>.</span></div>
+          </div>
+          <div class="modal-actions"><button class="btn btn-primary" data-go>Enfrentarlo</button></div>`, { dismissible: false, wide: true });
+        modal.querySelector('[data-go]').addEventListener('click', () => { modal.parentElement._close(); briefingCoach(); });
+    };
+
     const briefingCoach = () => {
+        if (isClimax() && !climaxShown.has(m.quarter)) return showClimax();
         music.setMood('decision');
         // Si el Congreso te citó, la sesión va antes de la reunión del Directorio.
         if (m.congress.pending) return showCitation();
@@ -646,6 +788,7 @@ export function playScenario(root, scenario, opts) {
           <div class="steps" style="grid-template-columns:repeat(${m.moves.length},1fr)" role="radiogroup" aria-label="Cambio de tasa">
             ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" data-dir="${Math.sign(v)}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}><span class="step-main">${v === 0 ? icon('equal', { size: 16 }) : `${icon(v > 0 ? 'up' : 'down', { size: 14 })}${moveLabel(v)}`}</span><small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
+          ${m.scenario.board ? boardBlock(m, move, convinced) : ''}
           ${m.fx ? fxBlock(m, move, sell, diff) : ''}
           ${m.guidanceOn ? guidanceBlock(m, move, tone, diff) : ''}
           ${toolboxBlock(m, toolPick, diff)}
@@ -665,6 +808,7 @@ export function playScenario(root, scenario, opts) {
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-tone]').forEach(b => b.addEventListener('click', () => { tone = b.dataset.tone; music.click(); updateDecision(); }));
+        el.querySelectorAll('[data-convince]').forEach(b => b.addEventListener('click', () => { convinced = b.dataset.convince; music.sting(); updateDecision(); }));
         el.querySelectorAll('[data-pick]').forEach(b => b.addEventListener('click', () => { toolPick = toolPick === b.dataset.pick ? null : b.dataset.pick; music.click(); updateDecision(); }));
         el.querySelector('[data-term="comunicado"]')?.addEventListener('click', () => openGlossary('comunicado'));
         el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
@@ -689,7 +833,8 @@ export function playScenario(root, scenario, opts) {
             + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : '')
             + (toolPick ? `. Además: ${TOOL_BY_ID[toolPick].name.toLowerCase()}` : '')
             + (m.guidanceOn && tone !== 'neutral' ? ` «${GUIDANCE[tone].phrase}»` : ''));
-        const rec = m.decide(rate, sell, tone, toolPick);
+        const rec = m.decide(rate, sell, tone, toolPick, { convinced });
+        convinced = null;
         tone = 'neutral';
         toolPick = null;
         sell = 0;
@@ -700,7 +845,7 @@ export function playScenario(root, scenario, opts) {
         section = 'noticias';
         seen = new Set(['noticias']);
         move = 0;
-        const reveal = () => { if (!m.isOver) { render(); flashMeters(rec); } showNewspaper(rec); busy = false; };
+        const reveal = () => { if (!m.isOver) { render(); flashMeters(rec); } showReaction(rec, () => { showNewspaper(rec); busy = false; }); };
         if (rec.surprise) {
             showBreaking(rec.surprise, { onClose: reveal });
             const steps = opts.coachSteps?.surprise?.[rec.quarter];
@@ -873,8 +1018,7 @@ export function renderVerdict(root, m, r, { title, text, reality, sources, achie
         <div class="chart">${charts}${fxChart}</div>
         ${peopleBalance(m.peopleHistory, m.regionHistory)}
         ${reality ? `<div class="section-title">Lo que pasó en la realidad</div><p class="reality">${reality}</p>` : ''}
-        ${achievements.length ? `<div class="section-title">Logros</div>
-        <div class="achievements">${achievements.map(a => `<div class="ach${newAch.includes(a) ? ' new' : ''}"><strong>${a.name}</strong><small>${a.text}</small>${newAch.includes(a) ? '<span class="pill good">Nuevo</span>' : ''}</div>`).join('')}</div>` : ''}
+        ${achievementsBlock(achievements, newAch)}
         ${sources?.length ? `<details class="sources"><summary>Fuentes</summary><ul>${sources.map(s => `<li><a href="${s.url}" target="_blank" rel="noopener">${s.label}</a></li>`).join('')}</ul></details>` : ''}
         <div class="modal-actions">${actions.map(a => `<button class="btn ${a.primary ? 'btn-primary' : ''}" data-action="${a.id}">${a.label}</button>`).join('')}</div>
       </section>
