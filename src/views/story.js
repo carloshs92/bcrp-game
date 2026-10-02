@@ -1,3 +1,4 @@
+import { scene } from './scenes.js';
 import { CHAPTERS, INTERLUDES, INTERLUDE_SOURCES } from '../model/history.js';
 import { logo, andeanBand } from './art.js';
 import { openModal } from './modal.js';
@@ -54,21 +55,57 @@ export function renderStory(root, { onHome }) {
         chapterIntro(root, CHAPTERS.find(c => c.id === b.dataset.chapter), { onHome })));
 }
 
+/** Ilustración de cada diapositiva: hitos (por año) y párrafos de contexto (en orden). */
+const SLIDE_SCENES = {
+    'hiper-1990': { hitos: { 1922: 'banco-1922', 1931: 'ley-1931', 1985: 'inti-1985' }, contexto: ['hiper', 'shock', 'imprenta'] },
+    'crisis-2008': { hitos: { 1991: 'sol-1991', 1993: 'constitucion', 2002: 'meta-2002', 2007: 'meta' }, contexto: ['boom', 'crash'] },
+    'nino-2017': { hitos: { '2010–2016': 'desdolarizacion' }, contexto: ['nino', 'mercado'] },
+    'pandemia-2020': { hitos: {}, contexto: ['cuarentena', 'reactiva'] },
+    'inflacion-2022': { hitos: { 2021: 'mercado' }, contexto: ['dolar-sube', 'guerra'] }
+};
+
+/** Intro del capítulo como slider: primero los hitos que llevaron hasta aquí, luego la situación y tu reto. */
 function chapterIntro(root, ch, { onHome }) {
-    const milestones = INTERLUDES[ch.id] ?? [];
-    const modal = openModal(`
-      <div class="eyebrow">Capítulo ${ch.number} · ${ch.year}</div>
-      <h2>${ch.title}</h2>
-      ${milestones.length ? `<ul class="milestones compact">${milestones.map(x => `<li><strong>${x.year}</strong> ${x.text}</li>`).join('')}</ul>` : ''}
-      ${ch.context.map(p => `<p class="lead">${p}</p>`).join('')}
-      <div class="modal-actions">
-        <button class="btn" data-close>Volver</button>
-        <button class="btn btn-primary" data-start>Asumir el cargo</button>
-      </div>`, { wide: true });
-    modal.querySelector('[data-start]').addEventListener('click', () => {
+    const art = SLIDE_SCENES[ch.id] ?? { hitos: {}, contexto: [] };
+    const slides = [
+        ...(INTERLUDES[ch.id] ?? []).map(x => ({ kicker: `Antes de este capítulo · ${x.year}`, text: x.text, img: art.hitos[x.year] })),
+        ...ch.context.map((p, i) => ({ kicker: i === ch.context.length - 1 ? 'Tu reto' : ch.year, text: p, img: art.contexto[i] }))
+    ];
+    let i = 0;
+    const onKey = e => {
+        if (e.key === 'ArrowRight' && i < slides.length - 1) { i++; draw(); }
+        else if (e.key === 'ArrowLeft' && i > 0) { i--; draw(); }
+    };
+    document.addEventListener('keydown', onKey);
+    const modal = openModal('<div class="ch-slider"></div>', { wide: true, onClose: () => document.removeEventListener('keydown', onKey) });
+    const box = modal.querySelector('.ch-slider');
+    const start = () => {
         modal.parentElement._close();
         playChapter(root, ch, { onHome });
-    });
+    };
+    const draw = () => {
+        const sl = slides[i], last = i === slides.length - 1;
+        box.innerHTML = `
+          <div class="ch-art" key="${i}">${scene(sl.img)}</div>
+          <div class="ch-body">
+            <div class="eyebrow">Capítulo ${ch.number} · ${ch.title}</div>
+            <div class="ch-kicker${last ? ' reto' : ''}">${sl.kicker}</div>
+            <p class="lead">${sl.text}</p>
+          </div>
+          <div class="ch-foot">
+            <div class="dots">${slides.map((_, k) => `<button class="${k === i ? 'on' : ''}" data-dot="${k}" aria-label="Diapositiva ${k + 1}"></button>`).join('')}</div>
+            <div class="ch-actions">
+              ${i === 0 ? '<button class="btn" data-close>Volver</button>' : '<button class="btn" data-prev>Atrás</button>'}
+              ${!last ? '<button class="btn btn-ghost" data-skip>Saltar</button>' : ''}
+              <button class="btn btn-primary" data-next>${last ? 'Asumir el cargo' : 'Siguiente'}</button>
+            </div>
+          </div>`;
+        box.querySelector('[data-prev]')?.addEventListener('click', () => { i--; draw(); });
+        box.querySelector('[data-skip]')?.addEventListener('click', start);
+        box.querySelector('[data-next]').addEventListener('click', () => { if (last) start(); else { i++; draw(); } });
+        box.querySelectorAll('[data-dot]').forEach(b => b.addEventListener('click', () => { i = Number(b.dataset.dot); draw(); }));
+    };
+    draw();
 }
 
 function playChapter(root, ch, { onHome }) {

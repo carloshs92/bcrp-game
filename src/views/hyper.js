@@ -10,14 +10,15 @@ import { getSettings } from '../storage.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
+import { icon } from './icons.js';
 
 const pct = v => `${v.toFixed(1)}%`;
 const help = term => `<button class="help" data-term="${term}" aria-label="¿Qué es esto?">?</button>`;
 
-function meter({ id, label, term, display, pos, danger, tone, sub }) {
+function meter({ id, label, term, ico, display, pos, danger, tone, sub }) {
     return `
     <div class="meter ${tone}" id="${id}">
-      <div class="meter-top"><span class="kpi-label">${label} ${help(term)}</span><strong class="meter-val num">${display}</strong></div>
+      <div class="meter-top"><span class="kpi-label"><span class="meter-ico">${icon(ico, { size: 16 })}</span>${label} ${help(term)}</span><strong class="meter-val num">${display}</strong></div>
       <div class="meter-track">
         ${danger ? `<span class="meter-danger" style="left:${danger[0] * 100}%;width:${(danger[1] - danger[0]) * 100}%"></span>` : ''}
         <span class="meter-fill" style="width:${Math.max(0, Math.min(1, pos)) * 100}%"></span>
@@ -31,12 +32,18 @@ function meters(h) {
     // Escala logarítmica: de 1% a 400% mensual.
     const logPos = v => Math.log10(Math.max(1, v)) / Math.log10(400);
     return [
-        meter({ id: 'h-infl', label: 'Inflación del mes', term: 'hiperinflacion', display: pct(s.inflation), pos: logPos(s.inflation), danger: [logPos(60), 1], tone: s.inflation <= 10 ? 'good' : s.inflation < 40 ? 'warn' : 'bad', sub: 'Meta del capítulo: 10% o menos · pierdes sobre 60%' }),
-        meter({ id: 'h-cred', label: 'Credibilidad', term: 'credibilidad', display: `${Math.round(s.credibility)}`, pos: s.credibility / 100, tone: s.credibility > 50 ? 'good' : s.credibility > 25 ? 'warn' : 'bad', sub: '¿La gente cree que la inflación va a parar?' }),
-        meter({ id: 'h-social', label: 'Tensión social', term: 'autonomia', display: `${Math.round(s.social)}`, pos: s.social / 100, danger: [0.8, 1], tone: s.social < 60 ? 'good' : s.social < 85 ? 'warn' : 'bad', sub: 'Sueldos que no alcanzan · pierdes en 100' }),
-        meter({ id: 'h-act', label: 'Actividad económica', term: 'pbi', display: pct(s.activity), pos: (s.activity + 15) / 23, tone: s.activity > 0 ? 'good' : s.activity > -6 ? 'warn' : 'bad', sub: 'Variación anual aproximada' })
+        meter({ id: 'h-infl', label: 'Inflación del mes', term: 'hiperinflacion', ico: 'cart',  display: pct(s.inflation), pos: logPos(s.inflation), danger: [logPos(60), 1], tone: s.inflation <= 10 ? 'good' : s.inflation < 40 ? 'warn' : 'bad', sub: 'Meta del capítulo: 10% o menos · pierdes sobre 60%' }),
+        meter({ id: 'h-cred', label: 'Credibilidad', term: 'credibilidad', ico: 'handshake',  display: `${Math.round(s.credibility)}`, pos: s.credibility / 100, tone: s.credibility > 50 ? 'good' : s.credibility > 25 ? 'warn' : 'bad', sub: '¿La gente cree que la inflación va a parar?' }),
+        meter({ id: 'h-social', label: 'Tensión social', term: 'autonomia', ico: 'people',  display: `${Math.round(s.social)}`, pos: s.social / 100, danger: [0.8, 1], tone: s.social < 60 ? 'good' : s.social < 85 ? 'warn' : 'bad', sub: 'Sueldos que no alcanzan · pierdes en 100' }),
+        meter({ id: 'h-act', label: 'Actividad económica', term: 'pbi', ico: 'factory',  display: pct(s.activity), pos: (s.activity + 15) / 23, tone: s.activity > 0 ? 'good' : s.activity > -6 ? 'warn' : 'bad', sub: 'Variación anual aproximada' })
     ].join('');
 }
+
+const SECTIONS = [
+    { id: 'noticias', ico: 'megaphone', kicker: 'Qué pasó', title: 'Noticias y gente' },
+    { id: 'tesoro', ico: 'printer', kicker: 'Qué te piden', title: 'El Tesoro' },
+    { id: 'anuncio', ico: 'gavel', kicker: 'Qué decides', title: 'El anuncio' }
+];
 
 export function playHyper(root, chapter, { onExit, onFinish }) {
     const h = new HyperChapter(chapter);
@@ -55,10 +62,35 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
         if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
             const i = choice ? ids.indexOf(choice) + (e.key === 'ArrowRight' ? 1 : -1) : 0;
             if (i >= 0 && i < ids.length) { choice = ids[i]; updateChoices(); }
-        } else if (e.key === 'Enter' && !e.target.closest('button')) announce();
+        } else if (/^[1-3]$/.test(e.key)) goTo(SECTIONS[Number(e.key) - 1].id);
+        else if (e.key === 'Enter' && !e.target.closest('button')) announce();
     };
     document.addEventListener('keydown', onKey);
     const cleanup = () => { document.removeEventListener('keydown', onKey); timer.stop(); };
+
+    // El mes se recorre en tres secciones: qué pasó, qué pide el Tesoro y qué decides.
+    let section = 'noticias';
+    let seen = new Set(['noticias']);
+    const summary = id => id === 'noticias' ? h.event.title
+        : id === 'tesoro' ? (h.event.asks === 'imprimir' ? 'Pide que el BCR imprima dinero' : 'Sin pedido nuevo este mes')
+            : `Inflación del mes: ${pct(h.state.inflation)}`;
+    const panelNext = next => `<div class="panel-next">
+        ${next !== 'anuncio' ? '<button class="btn btn-ghost" data-goto="anuncio">Ir directo al anuncio</button>' : ''}
+        <button class="btn btn-primary" data-goto="${next}">Siguiente: ${SECTIONS.find(x => x.id === next).title} ${icon('down', { size: 16 })}</button>
+      </div>`;
+    const goTo = id => {
+        section = id;
+        seen.add(id);
+        root.querySelectorAll('[data-panel]').forEach(p => { p.hidden = p.dataset.panel !== id; });
+        root.querySelectorAll('[data-goto][role="tab"]').forEach(b => {
+            const on = b.dataset.goto === id;
+            b.classList.toggle('on', on);
+            b.setAttribute('aria-selected', on);
+            if (seen.has(b.dataset.goto)) b.classList.remove('unseen');
+        });
+        const nav = root.querySelector('.turn-nav');
+        if (nav && nav.getBoundingClientRect().top < 0) nav.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    };
 
     const render = () => {
         const e = h.event;
@@ -76,39 +108,60 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
         </header>
         <div class="andean-strip">${andeanBand}</div>
         <div class="mission" role="note">
-          <span class="mission-role"><strong>Tú diriges el BCR en 1990.</strong> Decides si sigue imprimiendo dinero para el Estado.</span>
-          <span class="mission-goal"><strong>Tu objetivo:</strong> bajar la inflación mensual a 10% o menos · evitar un estallido social · recuperar la confianza.</span>
+          <span class="mission-role"><span class="mission-ico">${icon('user', { size: 16 })}</span><strong>Tú diriges el BCR en 1990.</strong> Decides si sigue imprimiendo dinero para el Estado.</span>
+          <span class="mission-goal"><span class="mission-ico">${icon('target', { size: 16 })}</span><strong>Tu objetivo:</strong> bajar la inflación mensual a 10% o menos · evitar un estallido social · recuperar la confianza.</span>
         </div>
         <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
           <div class="meters">${meters(h)}</div>
-          <div class="mandate-grid">
-            <div class="col">
+          <nav class="turn-nav three" role="tablist" aria-label="Secciones del mes">${SECTIONS.map((sec, i) => `
+            <button role="tab" data-goto="${sec.id}" aria-selected="${sec.id === section}" class="${sec.id === section ? 'on' : ''}${seen.has(sec.id) ? '' : ' unseen'}">
+              <span class="tn-ico">${icon(sec.ico, { size: 20 })}</span>
+              <span class="tn-text"><small>${i + 1} · ${sec.kicker}</small><strong>${sec.title}</strong><span class="tn-sum">${summary(sec.id)}</span></span>
+            </button>`).join('')}
+          </nav>
+          <section class="turn-panel" data-panel="noticias" ${section === 'noticias' ? '' : 'hidden'}>
+            <div class="mandate-grid">
               <section class="card event" id="event">
                 <div class="event-head">${avatar(e.who)}<div><small>${c.name}</small><h3>${e.title}</h3></div><span class="pill info">${h.label()}</span></div>
-                <blockquote>“${e.quote}”</blockquote>
-                ${e.asks === 'imprimir' ? '<div class="ask"><span class="pill warn">Pide que el BCR imprima dinero</span></div>' : ''}
+                <blockquote class="bubble">“${e.quote}”</blockquote>
               </section>
+              ${peoplePanel(lastPeople, { regions: lastRegions, empty: 'Tras el paquetazo, la gente está angustiada. Aquí verás cómo vive cada sector tus decisiones.' })}
+            </div>
+            ${panelNext('tesoro')}
+          </section>
+          <section class="turn-panel" data-panel="tesoro" ${section === 'tesoro' ? '' : 'hidden'}>
+            <div class="mandate-grid">
+              <section class="card state-card" id="treasury">
+                <h3><span class="h-ico">${icon('printer', { size: 16 })}</span>El Tesoro ${help('emision')}</h3>
+                <div class="gov">${avatar('ministro')}<div><small>${CHARACTERS.ministro.name}</small>
+                  <p>${e.asks === 'imprimir' ? '<strong>Pide que el BCR imprima dinero</strong> para pagar los gastos del Estado.' : 'Este mes el Tesoro no pide emisión nueva, pero las cuentas siguen en rojo.'}</p>
+                  <p>Cada inti que se imprime sin respaldo sube los precios. Por eso, desde 1993, la Constitución le prohíbe al BCR financiar al Tesoro.</p>
+                </div></div>
+              </section>
+              <section class="card" id="projection">
+                <h3><span class="h-ico">${icon('telescope', { size: 16 })}</span>Inflación mensual <span class="sub">Agosto 1990 (Fujishock): 397%</span></h3>
+                <div class="hchart">${monthly.length
+                    ? compareChart({ labels: h.chapter.labels.slice(0, monthly.length).map(shortLabel), band: false, series: [{ values: monthly, color: 'var(--navy)', label: 'Inflación del mes' }] })
+                    : '<p class="empty-chart">Aquí verás la inflación de cada mes. En agosto fue de 397%: los precios casi se quintuplicaron en treinta días.</p>'}</div>
+              </section>
+            </div>
+            ${panelNext('anuncio')}
+          </section>
+          <section class="turn-panel" data-panel="anuncio" ${section === 'anuncio' ? '' : 'hidden'}>
+            <div class="mandate-grid announce-grid">
               <section class="card" id="choices">
-                <h3>¿Qué hace el BCR con el pedido del Tesoro? ${help('emision')}</h3>
+                <h3><span class="h-ico">${icon('gavel', { size: 16 })}</span>¿Qué hace el BCR con el pedido del Tesoro? ${help('emision')}</h3>
                 <div class="hchoices"></div>
                 <div class="tool">
                   <div><strong>${HYPER_TOOL.name}</strong><small>${HYPER_TOOL.desc}</small></div>
                   <button class="btn" data-tool ${h.toolLeft > 0 ? '' : 'disabled'}>${h.toolLeft > 0 ? 'Activar' : 'Activado'}</button>
                 </div>
               </section>
-              ${peoplePanel(lastPeople, { regions: lastRegions, empty: 'Tras el paquetazo, la gente está angustiada. Aquí verás cómo vive cada sector tus decisiones.' })}
-            </div>
-            <div class="col">
-              <section class="card" id="projection">
-                <h3>Inflación mensual <span class="sub">Agosto 1990 (Fujishock): 397%</span></h3>
-                <div class="hchart">${monthly.length
-                    ? compareChart({ labels: h.chapter.labels.slice(0, monthly.length).map(shortLabel), band: false, series: [{ values: monthly, color: 'var(--navy)', label: 'Inflación del mes' }] })
-                    : '<p class="empty-chart">Aquí verás la inflación de cada mes. En agosto fue de 397%: los precios casi se quintuplicaron en treinta días.</p>'}</div>
-              </section>
               <section class="card decision" id="decision"></section>
             </div>
-          </div>
+          </section>
         </main>`;
+        root.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { goTo(b.dataset.goto); music.click(); }));
         root.querySelector('[data-exit]').addEventListener('click', () => { cleanup(); closeModal(); onExit(); });
         root.querySelector('[data-glossary]').addEventListener('click', () => openGlossary());
         root.querySelectorAll('[data-term]').forEach(b => b.addEventListener('click', () => openGlossary(b.dataset.term)));
@@ -157,6 +210,8 @@ export function playHyper(root, chapter, { onExit, onFinish }) {
         lastPeople = rec.people;
         lastRegions = rec.regions;
         choice = null;
+        section = 'noticias';
+        seen = new Set(['noticias']);
         const reveal = () => { if (!h.isOver) render(); showNewspaper(rec); busy = false; };
         if (rec.surprise) showBreaking(rec.surprise, { onClose: reveal });
         else reveal();

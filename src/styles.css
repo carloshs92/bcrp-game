@@ -946,3 +946,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
     .panel-next { justify-content: stretch; }
     .panel-next .btn { flex: 1; }
 }
+
+/* ================= Slider de la intro de cada capítulo ================= */
+.ch-slider { display: grid; gap: 14px; }
+.ch-art { border-radius: 16px; overflow: hidden; animation: rise .35s cubic-bezier(.2, .8, .2, 1); }
+.ch-art .scene { display: block; width: 100%; height: auto; max-height: 340px; }
+.ch-body { min-height: 150px; }
+.ch-kicker { display: inline-block; margin: 6px 0 8px; padding: 3px 12px; border-radius: 999px; background: var(--info-bg); color: var(--navy-2); font-size: 13px; font-weight: 800; }
+.ch-kicker.reto { background: var(--red); color: #fff; }
+.ch-body .lead { font-size: 17px; animation: fade .35s ease; }
+.ch-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ch-foot .dots { display: flex; gap: 6px; }
+.ch-foot .dots button { width: 9px; height: 9px; padding: 0; border: 0; border-radius: 50%; background: var(--line); transition: width .2s, background .2s; }
+.ch-foot .dots button.on { width: 24px; border-radius: 5px; background: var(--navy); }
+.ch-actions { display: flex; gap: 8px; margin-left: auto; }
+@media (max-width: 640px) {
+    .ch-body { min-height: 0; }
+    .ch-body .lead { font-size: 15.5px; }
+    .ch-actions { width: 100%; }
+    .ch-actions .btn { flex: 1; }
+}
+.turn-nav.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.turn-nav button[data-goto="tesoro"] .tn-ico { background: #f1e9fb; color: #6b3fa0; }
+.turn-nav button.on[data-goto="tesoro"] .tn-ico { background: rgba(255, 255, 255, .16); color: #fff; }
