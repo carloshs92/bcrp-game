@@ -1,49 +1,43 @@
-# 🎮 Guardián de la Estabilidad - BCRP Inflation Game
+# Sol Firme
 
-Un juego educativo sobre política monetaria del Banco Central de Reserva del Perú (BCRP). Controla la inflación, el tipo de cambio y mantén la economía estable.
+Serious game sobre la política monetaria del Banco Central de Reserva del Perú (BCRP). El jugador se sienta en el Directorio y, reunión a reunión, decide la tasa de interés de referencia para mantener la inflación dentro del rango meta sin provocar una recesión.
 
-![Game Screenshot](screenshot.png)
+Lo que viene: [docs/ROADMAP.md](docs/ROADMAP.md).
 
-## 🎯 Características
+## 🎯 Qué enseña
 
-- **Simulación económica realista** con inflación, tipo de cambio, reservas internacionales y PBI
-- **Sistema de niveles progresivos** con dificultad creciente
-- **Eventos externos e internos** que impactan la economía
-- **Asesor económico inteligente** que te da hints cuando estás en problemas
-- **Música adaptativa** que cambia según el estado económico
-- **Sistema de guardado** con LocalStorage para tu mejor puntuación
-- **Pixel art cyberpunk andino** con estética única
+- **La meta de inflación** del BCRP: 2%, con un rango de 1% a 3%.
+- **La tasa de referencia** como herramienta principal y cómo se transmite: tasa → créditos → gasto → precios.
+- **Los rezagos**: una decisión tarda meses en llegar a los precios, así que hay que decidir mirando hacia adelante.
+- **La tasa neutral** y la diferencia entre una política contractiva y una expansiva.
+- **Expectativas, credibilidad y choques de oferta**: por qué no conviene sobrerreaccionar a un alza de alimentos.
 
-## 🎮 Cómo Jugar
+## 🎮 Modos de juego
 
-### Controles
-- **← →** (Flechas): Ajustar tasa de interés
-- **Q**: Comprar dólares (aumenta reservas, debilita sol)
-- **E**: Vender dólares (reduce reservas, fortalece sol)
-- **M**: Toggle música
+1. **Tutorial** (3 turnos guiados). Una asesora explica los medidores, el debate del Directorio, la proyección y los imprevistos.
+2. **Modo Historia** (5 capítulos reales). Cada capítulo compara tus decisiones con las del BCRP real, y entre capítulos hay una línea de tiempo con los hitos: 1922, 1931, el inti, el Nuevo Sol, la Constitución de 1993 y las metas de inflación.
 
-### Objetivos
-Mantén estos 5 indicadores en rango:
-- ✓ Inflación: 1% - 3%
-- ✓ Tipo de cambio: S/ 3.60 - 3.90
-- ✓ Reservas: > $60,000M
-- ✓ Credibilidad: > 80%
-- ✓ PBI: Crecimiento positivo
+   | Capítulo | Lección |
+   |---|---|
+   | 1990 · La hiperinflación y el Fujishock | No financiar al fisco con emisión (Comité de Caja) |
+   | 2008 · La crisis financiera global | Subir contra la inflación y luego bajar rápido |
+   | 2017 · El Niño costero | No sobrerreaccionar a un choque de oferta |
+   | 2020 · La pandemia | La tasa llega a su piso; entra Reactiva Perú |
+   | 2021–2023 · La inflación más alta en 25 años | Anclar expectativas en medio de la tormenta |
+3. **Modo Libre**. Un mandato de 12 trimestres con eventos al azar que se vuelven más intensos cada año.
 
-### Sistema de Puntuación
-- **+10 puntos/mes**: Todos los indicadores en rango
-- **+3 puntos/mes**: 4/5 indicadores en rango
-- **0 puntos/mes**: 3/5 indicadores en rango
-- **-3 puntos/mes**: 2/5 indicadores en rango
-- **-10 puntos/mes**: Crisis (≤1/5 indicadores)
+**Elementos de juego:**
+- **Medidores:** inflación, crecimiento, credibilidad y presión política.
+- **Personajes peruanos ficticios:** la caserita de Surquillo, la confeccionista de Gamarra, el chofer de combi, el cambista de Ocoña.
+- **Debate halcón/paloma** en el Directorio.
+- **Proyección en vivo** de la inflación.
+- **Imprevistos de "¡Última hora!"** que aparecen después de anunciar la decisión.
+- **El Congreso:** su humor cambia con tus decisiones. Si se molesta, te cita y respondes con preguntas reales hechas por congresistas (anónimas) o recreaciones rotuladas de episodios reales. Una promesa te compromete el turno siguiente.
+- **Dólar y reservas** (Modo Libre, 2008 y 2021–23): vendes o compras dólares junto con la tasa. El tipo de cambio se traslada a los precios, golpea a quienes deben en dólares y gasta reservas.
+- **Cómo lo vive la gente:** cinco sectores con caritas y testimonios que cambian según la causa (alimentos caros, crédito caro, despidos…), más un **mapa del Perú por departamentos**. Cada región tiene su perfil económico (minería, agro, pesca, turismo, peso de los alimentos, exposición a El Niño y a las heladas) y un personaje local. El mapa se basa en [Natural Earth](https://www.naturalearthdata.com/), que es de dominio público.
+- **Música adaptativa** con timbres andinos generada en el navegador, con estados distintos para decidir, anunciar, un imprevisto, un buen resultado y un mal resultado.
 
-**Penalizaciones adicionales**:
-- Hiperinflación (>8%): -15 pts
-- Deflación (<0.5%): -10 pts
-- Reservas críticas (<$40B): -10 pts
-- Credibilidad perdida (<50%): -10 pts
-
-**Meta**: Acumula 1000 puntos para pasar al siguiente nivel
+Los datos históricos provienen de [BCRPData](https://estadisticas.bcrp.gob.pe) (tasa de referencia PD04722MM, inflación PN01273PM y PN01271PM). La inspiración de diseño está documentada en [Referencias e inspiración](https://claude.ai/code/artifact/07e52634-4356-4ac8-abfd-cd59b8b63159).
 
 ## 🚀 Desarrollo Local
 
@@ -112,62 +106,37 @@ npx gh-pages -d dist
 
 Luego habilita GitHub Pages en Settings → Pages → Source: gh-pages branch
 
-## 🎓 Conceptos Económicos
-
-### Tasa de Interés
-- **Sube la tasa** → Reduce inflación, atrae capital, fortalece sol, frena economía
-- **Baja la tasa** → Estimula economía, aumenta inflación, debilita sol
-
-### Intervención Cambiaria
-- **Comprar USD** → Aumenta reservas, debilita sol (tipo de cambio sube)
-- **Vender USD** → Reduce reservas, fortalece sol (tipo de cambio baja)
-
-### Relaciones Clave
-- Inflación alta → Sol se debilita
-- Tasa alta → Sol se fortalece
-- Sol débil → Inflación sube (pass-through)
-- Tasa alta → PBI baja
-
 ## 🛠️ Tecnologías
 
-- **Phaser 3**: Motor de juego
-- **Vite**: Build tool
-- **Web Audio API**: Música procedural
-- **LocalStorage**: Guardado de progreso
-- **GitHub Actions**: CI/CD automático
+- **JavaScript** (módulos ES) con HTML/CSS, gráficos SVG y **Web Audio** para la música. No usa frameworks, motor de juego ni archivos de audio o imagen.
+- **Vite**: servidor de desarrollo y build.
+- **node --test**: pruebas del modelo y de la calibración de cada capítulo (`npm test`).
+- **LocalStorage**: progreso, estrellas y récords.
+- **GitHub Actions**: despliegue automático a GitHub Pages.
 
 ## 📊 Estructura del Proyecto
 
-\`\`\`
-bcrp-game/
-├── src/
-│   ├── main.js              # Entry point
-│   ├── scenes/
-│   │   ├── BootScene.js     # Carga inicial
-│   │   └── GameScene.js     # Escena principal
-│   ├── models/
-│   │   └── EconomicModel.js # Simulación económica
-│   ├── ui/
-│   │   ├── NewsFeed.js      # Feed de noticias
-│   │   ├── AdvisorPanel.js  # Asesor económico
-│   │   ├── InterestRateSlider.js
-│   │   └── InflationMeter.js
-│   ├── managers/
-│   │   └── AudioManager.js  # Sistema de audio
-│   └── utils/
-│       ├── PixelArtGenerator.js
-│       └── SaveManager.js   # LocalStorage
-├── index.html
-├── vite.config.js
-└── package.json
-\`\`\`
+```
+src/
+├── main.js              # Menú y navegación entre modos
+├── storage.js           # Progreso en localStorage
+├── audio/music.js       # Música adaptativa andina (procedural)
+├── model/
+│   ├── economy.js       # Modelo macro mensual (puro)
+│   ├── events.js        # Personajes, eventos e imprevistos
+│   └── history.js       # Tutorial, capítulos históricos, interludios y datos reales
+├── game/
+│   ├── mandate.js       # Motor por turnos basado en escenarios
+│   └── hyper.js         # Motor del capítulo 1990 (emisión)
+└── views/               # Pantallas: inicio, juego, historia, 1990, veredictos
+test/                    # Balance del modo libre y calibración de cada capítulo
+```
 
 ## 🎨 Créditos
 
 - **Concepto**: Simulador educativo de política monetaria del BCRP
 - **Desarrollo**: [Tu Nombre]
-- **Arte**: Pixel art procedural generado con Canvas API
-- **Música**: Síntesis procedural con Web Audio API
+- **Ilustraciones**: SVG propios, en línea
 
 ## 📝 Licencia
 
