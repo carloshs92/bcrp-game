@@ -1,6 +1,7 @@
 import { openModal } from './modal.js';
 
 export const TERMS = {
+    comunicado: ['Comunicado (guía futura)', 'Junto con la tasa, el BCRP publica un comunicado que da pistas de sus próximos pasos. Si la gente le cree, las expectativas se mueven de inmediato, sin esperar a que la tasa haga efecto. Por eso el comunicado vale más cuanto más credibilidad tiene el BCR, y por eso contradecirlo después cuesta caro.'],
     bcrp: ['BCRP', 'Banco Central de Reserva del Perú. Es autónomo y la Constitución le da una finalidad: preservar la estabilidad monetaria, es decir, que el valor del sol no se erosione con la inflación.'],
     inflacion: ['Inflación', 'Aumento generalizado de los precios. Se mide como la variación del índice de precios al consumidor en los últimos 12 meses. Si es 3%, lo que costaba S/ 100 hace un año hoy cuesta S/ 103.'],
     meta: ['Rango meta', 'El BCRP busca una inflación de 2%, con una tolerancia de ±1 punto: entre 1% y 3%. A esto se le llama esquema de metas explícitas de inflación.'],
