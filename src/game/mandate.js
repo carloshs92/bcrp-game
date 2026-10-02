@@ -51,6 +51,30 @@ export const CONGRESS = {
     insistAt: 75       // con este enojo, aprueban el proyecto aunque te opongas (por insistencia)
 };
 
+/**
+ * El comunicado (guía futura): lo que el BCR dice sobre sus próximos pasos.
+ * `exp` mueve las expectativas al instante, escalado por la credibilidad (sin credibilidad,
+ * las palabras no valen nada); `demand` y `fx` son el efecto en las condiciones financieras.
+ * El tono compromete el turno siguiente: decir halcón y luego bajar la tasa es romper tu palabra.
+ */
+export const GUIDANCE = {
+    halcon: { label: 'Halcón', phrase: 'El Directorio evaluará ajustes adicionales si la inflación no cede.', exp: -0.3, demand: -0.2, fx: -0.6, pressure: 3 },
+    neutral: { label: 'Neutral', phrase: 'El Directorio está atento a la nueva información sobre la inflación y sus determinantes.', exp: 0, demand: 0, fx: 0, pressure: 0 },
+    paloma: { label: 'Paloma', phrase: 'El Directorio considera que hay espacio para seguir apoyando a la economía.', exp: 0.2, demand: 0.3, fx: 0.4, pressure: -3 }
+};
+export const GUIDANCE_RULES = { kept: 2, broken: 7, idle: 2, brokenFx: 1.5 };
+
+/** Efecto inmediato de un tono: el estado de partida con expectativas movidas y el choque extra. */
+export function guidanceEffect(state, tone) {
+    const g = GUIDANCE[tone] ?? GUIDANCE.neutral;
+    return {
+        start: g.exp ? { ...state, expectations: state.expectations + g.exp * state.credibility / 100 } : state,
+        shock: { demand: g.demand },
+        fx: g.fx,
+        pressure: g.pressure
+    };
+}
+
 export const FREE_SCENARIO = {
     id: 'libre',
     title: 'Modo libre',
@@ -162,9 +186,12 @@ export default class Mandate {
         this.scheduled = null;
         this.calmCount = 0;
         this.gameOver = null;
-        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0 };
+        this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0 };
         this.tools = (scenario.tools ?? []).map(t => ({ ...t, left: t.uses ?? 1 }));
         this.effects = []; // efectos de herramientas que duran varios turnos
+        // El comunicado existe desde las metas de inflación (2002); el tutorial y 1990 no lo usan.
+        this.guidanceOn = scenario.guidance !== false;
+        this.guidance = null; // tono del último comunicado, que compromete el turno siguiente
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
         this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
@@ -315,13 +342,24 @@ export default class Mandate {
         return this.fx ? Math.max(0, this.fx.reserves - 0.3 * this.fx.initialReserves) : 0;
     }
 
-    projection(rate, sell = 0) {
-        let extra = this.toolShock();
+    projection(rate, sell = 0, tone = 'neutral') {
+        const g = guidanceEffect(this.state, this.guidanceOn ? tone : 'neutral');
+        let extra = addShock(this.toolShock(), g.shock);
         if (this.fx) {
-            const dep = expectedDepreciation(this.fxPressure(), rate - this.state.rate, sell);
+            const dep = expectedDepreciation(this.fxPressure() + g.fx + this.brokenFx(rate - this.state.rate), rate - this.state.rate, sell);
             extra = addShock(extra, { supply: passThrough(dep), demand: -FX.balanceSheet * Math.max(0, dep) });
         }
-        return projectPath(this.state, rate, this.event, 4, this.params, this.steps, extra, this.gradual);
+        return projectPath(g.start, rate, this.event, 4, this.params, this.steps, extra, this.gradual);
+    }
+
+    /** ¿Este movimiento rompe lo que dijo el comunicado anterior? */
+    breaksGuidance(move) {
+        return (this.guidance === 'halcon' && move < 0) || (this.guidance === 'paloma' && move > 0);
+    }
+
+    /** Romper la guía desordena al mercado: el dólar salta. */
+    brokenFx(move) {
+        return this.breaksGuidance(move) ? GUIDANCE_RULES.brokenFx : 0;
     }
 
     /** Usa una herramienta especial (p. ej. Reactiva Perú). Dura `effect.turns` turnos. */
@@ -334,7 +372,7 @@ export default class Mandate {
         return true;
     }
 
-    decide(newRate, sell = 0) {
+    decide(newRate, sell = 0, tone = 'neutral') {
         // Un proyecto de ley sin respuesta se da por "no opinar".
         if (this.congress.pendingBill) this.answerBill(2);
         newRate = Math.max(this.minRate, newRate);
@@ -347,14 +385,16 @@ export default class Mandate {
         const notes = [];
         const surprise = this.drawSurprise();
         if (surprise) this.stats.surprises += 1;
+        if (!this.guidanceOn || !GUIDANCE[tone]) tone = 'neutral';
+        const voice = guidanceEffect(prev, tone);
 
         // Los choques pegan más fuerte a medida que avanza el mandato (solo modo libre).
         const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / 4);
-        let total = addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock());
+        let total = addShock(addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock()), voice.shock);
         // Mercado cambiario: se resuelve antes que los precios, porque el dólar se traslada a la inflación.
         let fxRecord = null;
         if (this.fx) {
-            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0);
+            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0) + voice.fx + this.brokenFx(move);
             const dep = expectedDepreciation(pressure, move, sell) + (this.fxRng() - 0.5) * FX.noise;
             const before = { ...this.fx };
             this.fx.rate *= 1 + dep / 100;
@@ -366,7 +406,7 @@ export default class Mandate {
         const base = splitShock(total, this.steps);
 
         // Varios meses con la misma tasa, más ruido: el futuro nunca sale igual a la proyección.
-        let s = prev;
+        let s = voice.start;
         const drivers = { demand: 0, expectations: 0, supply: 0 };
         for (let m = 0; m < this.steps; m++) {
             const noise = { demand: (this.rng() - 0.5) * 0.6, supply: (this.rng() - 0.5) * 0.3 };
@@ -397,10 +437,29 @@ export default class Mandate {
             this.congress.promise = null;
         }
 
+        // El comunicado anterior: cumplir lo dicho suma credibilidad; contradecirlo la hunde.
+        let guidanceNote = null;
+        if (this.guidance) {
+            const said = GUIDANCE[this.guidance].label.toLowerCase();
+            if (this.breaksGuidance(move)) {
+                s = { ...s, credibility: Math.max(0, s.credibility - GUIDANCE_RULES.broken) };
+                this.stats.guidanceBroken += 1;
+                guidanceNote = { tone: 'bad', text: `Tu comunicado anterior fue ${said} y ahora hiciste lo contrario. El mercado ya no sabe si creerte.` };
+            } else if ((this.guidance === 'halcon' && move > 0) || (this.guidance === 'paloma' && move < 0)) {
+                s = { ...s, credibility: Math.min(100, s.credibility + GUIDANCE_RULES.kept) };
+                this.stats.guidanceKept += 1;
+                guidanceNote = { tone: 'good', text: 'Hiciste lo que anunciaste en tu comunicado. Palabra cumplida, credibilidad ganada.' };
+            } else if (this.guidance === 'halcon' && prev.inflation > this.params.bandMax) {
+                s = { ...s, credibility: Math.max(0, s.credibility - GUIDANCE_RULES.idle) };
+                guidanceNote = { tone: 'warn', text: 'Anunciaste ajustes si la inflación no cedía, no cedió y no hiciste nada.' };
+            }
+        }
+        this.guidance = tone === 'neutral' ? null : tone;
+
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
         let pressure = this.pressure + (CONGRESS.start - this.pressure) * CONGRESS.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
-        pressure += surprise?.pressure ?? 0;
+        pressure += (surprise?.pressure ?? 0) + voice.pressure;
         if (event.asks === 'bajar') {
             if (move > 0) {
                 pressure += event.pressure * CONGRESS.askWeight;
@@ -420,6 +479,7 @@ export default class Mandate {
             notes.push({ tone: 'bad', text: 'La gente esperaba que actuaras contra la inflación y no lo hiciste.' });
         }
         if (promiseNote) notes.push(promiseNote);
+        if (guidanceNote) notes.push(guidanceNote);
         if (Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove) this.stats.bigMoves += 1;
         this.pressure = clamp(pressure, 0, 100);
 
@@ -449,6 +509,7 @@ export default class Mandate {
             } : null
         };
         record.fx = fxRecord;
+        record.tone = tone;
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
         const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];

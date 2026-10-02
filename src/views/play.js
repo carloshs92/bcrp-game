@@ -1,4 +1,4 @@
-import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS } from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -200,6 +200,35 @@ function effectChips({ pressure = 0, credibility = 0, extra = '' }) {
     return `<span class="fx-chips">${chip('congress', 'Enojo', pressure, false)}${chip('handshake', 'Credibilidad', credibility, true)}${extra ? `<span class="fx-chip warn">${extra}</span>` : ''}</span>`;
 }
 
+/** El comunicado: tres tonos con su efecto inmediato y lo que comprometen para el próximo turno. */
+function guidanceBlock(m, move, tone, diff) {
+    const prev = m.guidance;
+    const broken = m.breaksGuidance(move);
+    const commit = { halcon: 'Te compromete: no bajar la tasa el próximo turno', neutral: 'No te compromete a nada', paloma: 'Te compromete: no subir la tasa el próximo turno' };
+    const chips = {
+        halcon: [['Expectativas', -1, true], ['Dólar', -1, true], ['Mypes y deudores', -1, false], ['Enojo', 1, false]],
+        neutral: [],
+        paloma: [['Expectativas', 1, false], ['Mypes y deudores', 1, true], ['Enojo', -1, true]]
+    };
+    const ico = { halcon: 'up', neutral: 'equal', paloma: 'down' };
+    return `
+      <div class="guidance">
+        <div class="fx-head"><strong>${icon('megaphone', { size: 16 })} Comunicado ${help('comunicado')}</strong>
+          <span>Pesa más con más credibilidad (${Math.round(m.state.credibility)})</span></div>
+        ${prev ? `<div class="guidance-prev ${broken ? 'bad' : ''}">${broken
+            ? `Tu comunicado anterior fue <strong>${GUIDANCE[prev].label.toLowerCase()}</strong>: con esta tasa romperás tu palabra (−${GUIDANCE_RULES.broken} de credibilidad y el dólar salta).`
+            : `Tu comunicado anterior fue <strong>${GUIDANCE[prev].label.toLowerCase()}</strong>. ${(prev === 'halcon' && move > 0) || (prev === 'paloma' && move < 0) ? `Cumplirlo suma +${GUIDANCE_RULES.kept} de credibilidad.` : 'Cuidado con contradecirlo.'}`}</div>` : ''}
+        <div class="tones" role="radiogroup" aria-label="Tono del comunicado">${Object.entries(GUIDANCE).map(([id, g]) => `
+          <button role="radio" aria-checked="${id === tone}" class="tone ${id}${id === tone ? ' on' : ''}" data-tone="${id}">
+            <span class="tone-top">${icon(ico[id], { size: 14 })}<strong>${g.label}</strong></span>
+            <span class="tone-phrase">«${g.phrase}»</span>
+            ${diff.hints && chips[id].length ? `<span class="fx-chips">${chips[id].map(([l, d, good]) => `<span class="fx-chip ${good ? 'good' : 'bad'}">${l} ${d > 0 ? '▲' : '▼'}</span>`).join('')}</span>` : ''}
+            <small>${commit[id]}</small>
+          </button>`).join('')}
+        </div>
+      </div>`;
+}
+
 /** Las cuatro secciones del turno. */
 const SECTIONS = [
     { id: 'noticias', ico: 'megaphone', kicker: 'Qué pasó', title: 'Noticias y gente' },
@@ -241,6 +270,7 @@ export function playScenario(root, scenario, opts) {
     const diff = opts.difficulty ? { difficulty: opts.difficulty, ...DIFFICULTIES[opts.difficulty] } : getSettings();
     let move = 0;
     let shownRate = null;   // para animar el número cuando cambia la tasa elegida
+    let tone = 'neutral';   // el comunicado del turno
     let sell = 0; // intervención cambiaria del turno (US$ miles de millones; positivo = vender)
     let busy = false;
     let lastPeople = null;
@@ -282,7 +312,7 @@ export function playScenario(root, scenario, opts) {
             const a = m.advisors();
             return `Halcón ${moveLabel(a.hawk.move)} · Paloma ${moveLabel(a.dove.move)}`;
         }
-        return `Tasa actual ${pct(m.state.rate, 2)}`;
+        return `Tasa actual ${pct(m.state.rate, 2)}${m.guidance ? ` · comunicado previo: ${GUIDANCE[m.guidance].label.toLowerCase()}` : ''}`;
     };
 
     const panelNext = next => {
@@ -536,7 +566,7 @@ export function playScenario(root, scenario, opts) {
         const s = m.state;
         const rate = Math.max(m.minRate, s.rate + move);
         const adv = m.advisors();
-        const proj = m.projection(rate, sell);
+        const proj = m.projection(rate, sell, tone);
         const end = proj.at(-1);
         const endOk = inBand(end.inflation);
 
@@ -552,7 +582,9 @@ export function playScenario(root, scenario, opts) {
         root.querySelectorAll('.fan').forEach(f => { f.innerHTML = fan; });
 
         const hikeCost = scenario.hikePressure ?? 4;
-        const pressHint = move > 0 ? ` · presión +${Math.round(move / 0.25 * hikeCost)}${m.event.asks === 'bajar' ? ` (+${Math.round(m.event.pressure * CONGRESS.askWeight)} por ignorar el pedido)` : ''}` : '';
+        const hikeP = move > 0 ? Math.round(move / 0.25 * hikeCost) + (m.event.asks === 'bajar' ? Math.round(m.event.pressure * CONGRESS.askWeight) : 0) : 0;
+        const toneP = m.guidanceOn ? GUIDANCE[tone].pressure : 0;
+        const pressHint = hikeP + toneP > 0 ? ` · enojo del Congreso +${hikeP + toneP}${m.event.asks === 'bajar' && move > 0 ? ' (ignoras un pedido)' : ''}` : '';
         const tools = m.tools.map(t => `
           <div class="tool">
             <div><strong>${t.name}</strong><small>${t.desc}</small></div>
@@ -569,6 +601,7 @@ export function playScenario(root, scenario, opts) {
             ${m.moves.map(v => `<button role="radio" aria-checked="${v === move}" class="${v === move ? 'on' : ''}" data-move="${v}" data-dir="${Math.sign(v)}" ${s.rate + v < m.minRate - 1e-9 ? 'disabled' : ''}><span class="step-main">${v === 0 ? icon('equal', { size: 16 }) : `${icon(v > 0 ? 'up' : 'down', { size: 14 })}${moveLabel(v)}`}</span><small>${v === 0 ? 'Mantener' : `${Math.round(Math.abs(v) * 100)} pb`}</small></button>`).join('')}
           </div>
           ${m.fx ? fxBlock(m, move, sell, diff) : ''}
+          ${m.guidanceOn ? guidanceBlock(m, move, tone, diff) : ''}
           ${tools}
           ${m.congress.promise ? '<div class="promise-banner">Prometiste al Congreso <strong>no subir la tasa</strong> este trimestre. Puedes romper la promesa, pero te costará credibilidad.</div>' : ''}
           ${tradeoffTable(move, sell, !!m.fx)}
@@ -584,6 +617,8 @@ export function playScenario(root, scenario, opts) {
         shownRate = rate;
         el.querySelectorAll('[data-move]').forEach(b => b.addEventListener('click', () => { move = Number(b.dataset.move); music.click(); updateDecision(); }));
         el.querySelectorAll('[data-sell]').forEach(b => b.addEventListener('click', () => { sell = Number(b.dataset.sell); music.click(); updateDecision(); }));
+        el.querySelectorAll('[data-tone]').forEach(b => b.addEventListener('click', () => { tone = b.dataset.tone; music.click(); updateDecision(); }));
+        el.querySelector('[data-term="comunicado"]')?.addEventListener('click', () => openGlossary('comunicado'));
         el.querySelector('[data-term="intervencion"]')?.addEventListener('click', () => openGlossary('intervencion'));
         el.querySelector('[data-announce]').addEventListener('click', announce);
         el.querySelector('[data-term="tasa"]').addEventListener('click', () => openGlossary('tasa'));
@@ -603,8 +638,10 @@ export function playScenario(root, scenario, opts) {
         await announceSuspense(timeout ? `Se acabó el tiempo. El Directorio no llegó a un acuerdo: la tasa se mantiene en ${pct(rate, 2)}…`
             : d === 0 ? `El Directorio acordó mantener la tasa de referencia en ${pct(rate, 2)}…`
             : `El Directorio acordó ${d > 0 ? 'elevar' : 'reducir'} la tasa de referencia a ${pct(rate, 2)}…`
-            + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : ''));
-        const rec = m.decide(rate, sell);
+            + (sell > 0 ? ` y vender US$ ${sell} mil millones` : sell < 0 ? ` y comprar US$ ${-sell} mil millones` : '')
+            + (m.guidanceOn && tone !== 'neutral' ? ` «${GUIDANCE[tone].phrase}»` : ''));
+        const rec = m.decide(rate, sell, tone);
+        tone = 'neutral';
         sell = 0;
         rec.timeout = timeout;
         lastPeople = rec.people;
@@ -658,6 +695,7 @@ export function playScenario(root, scenario, opts) {
             ${andeanBand}
             <h2 class="paper-head">${rec.headline}</h2>
             <p class="paper-sub">El Directorio del BCR ${rec.move === 0 ? `mantuvo la tasa en ${pct(rec.rate, 2)}` : `${rec.move > 0 ? 'subió' : 'bajó'} la tasa ${Math.round(Math.abs(rec.move) * 100)} pb, a ${pct(rec.rate, 2)}`}.</p>
+            ${rec.tone && rec.tone !== 'neutral' ? `<p class="paper-quote">${icon('megaphone', { size: 14 })}Comunicado: «${GUIDANCE[rec.tone].phrase}»</p>` : ''}
           </div>
           <div class="reveal">
             <div class="reveal-num"><small>Inflación</small><span class="num" data-anim-from="${rec.prev.inflation}" data-anim-to="${rec.state.inflation}">${pct(rec.prev.inflation)}</span></div>

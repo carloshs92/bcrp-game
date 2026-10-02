@@ -152,8 +152,10 @@ function dominant(terms, fallback) {
 }
 
 /** Ánimo por sector tras un turno del motor de tasa. */
-export function rateMoods({ state, move, rate, fx = null }, potentialGrowth = 3) {
+export function rateMoods({ state, move, rate, fx = null, tone = 'neutral' }, potentialGrowth = 3) {
     const dep = fx?.dep ?? 0;
+    // El comunicado también se siente: anunciar alivio anima a quienes dependen del crédito.
+    const talk = tone === 'paloma' ? 0.4 : tone === 'halcon' ? -0.3 : 0;
     const hurtInfl = Math.max(0, state.inflation - 2.5);
     const food = Math.max(0, state.supply);
     const g = state.growth - potentialGrowth;
@@ -173,14 +175,14 @@ export function rateMoods({ state, move, rate, fx = null }, potentialGrowth = 3)
     const trabCause = ['despidos', 'enfriamiento', 'estable', 'contratan', 'auge'][toMood(trabScore) + 2];
 
     const ventas = 0.35 * state.outputGap, tasa = -1.0 * move - 0.15 * Math.max(0, rate - 5);
-    const mypeScore = 0.3 + ventas + tasa;
+    const mypeScore = 0.3 + ventas + tasa + talk;
     const mypeCause = Math.abs(ventas + tasa) < 0.3 ? 'estable'
         : dominant([['tasa', tasa], ['ventas', ventas]], 'estable') === 'tasa' ? (tasa < 0 ? 'tasaSube' : 'tasaBaja')
             : (ventas < 0 ? 'ventasCaen' : 'ventasSuben');
 
     // Dolarización: muchas familias deben en dólares y ganan en soles.
     const dolarHit = -0.3 * Math.max(0, dep - 1);
-    const deudScore = 0.5 - 1.6 * move - 0.2 * Math.max(0, rate - 4) + dolarHit;
+    const deudScore = 0.5 - 1.6 * move - 0.2 * Math.max(0, rate - 4) + dolarHit + talk;
     const deudCause = dolarHit < -0.6 && dolarHit < -1.6 * move ? 'dolar'
         : move > 0 ? 'tasaSube' : move < 0 ? 'tasaBaja' : rate > 6 ? 'tasaAlta' : 'estable';
 

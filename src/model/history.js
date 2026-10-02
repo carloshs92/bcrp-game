@@ -16,6 +16,7 @@ export const TUTORIAL = {
     id: 'tutorial',
     kind: 'rate',
     title: 'Tutorial: tu primer Programa Monetario',
+    guidance: false, // el comunicado se aprende después
     year: 'Hoy',
     turns: 3,
     labels: ['T1', 'T2', 'T3'],
