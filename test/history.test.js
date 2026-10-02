@@ -138,3 +138,21 @@ test('dólar: vender reservas frena la depreciación y no se puede bajar del pis
     while (!m.isOver) m.decide(m.state.rate, 3);
     assert.ok(m.fx.reserves >= 0.3 * m.fx.initialReserves - 1e-9);
 });
+
+test('momento decisivo: copiar al BCRP real lo supera; subir la tasa en plena crisis de 2008 no', () => {
+    const ch = CHAPTERS.find(c => c.id === 'crisis-2008');
+    const climaxOf = strategy => {
+        const m = new Mandate(11, ch);
+        let i = 0, rec = null;
+        while (!m.isOver) {
+            if (i === 1) m.tools.forEach(t => m.useTool(t.id));
+            const r = m.decide(strategy(m, i), ch.realPath.fxSales?.[i] ?? 0);
+            if (r.climax) rec = r;
+            i++;
+        }
+        return rec;
+    };
+    assert.equal(climaxOf((m, i) => ch.realPath.rate[i]).climaxWon, true);
+    assert.equal(climaxOf(m => m.state.rate + 0.75).climaxWon, false);
+    for (const c of CHAPTERS.filter(x => x.climax)) assert.ok(c.climax.turn < c.turns, c.id);
+});

@@ -55,6 +55,7 @@ export const CHAPTERS = [
     },
     {
         id: 'crisis-2008',
+        climax: { turn: 3, scene: 'crash', title: 'Quiebra Lehman Brothers', text: 'El mundo entra en pánico: los bancos dejan de prestarse entre ellos y el crédito se puede congelar en cualquier momento. Lo que decidas este trimestre se va a recordar.' }, // momento decisivo
         toolbox: ['encaje-sube', 'encaje-baja', 'encaje-dolares', 'repos'], // caja de herramientas de la época
         kind: 'rate',
         number: 2,
@@ -109,6 +110,7 @@ export const CHAPTERS = [
     },
     {
         id: 'nino-2017',
+        climax: { turn: 0, scene: 'nino', title: 'Huaicos y precios por las nubes', text: 'Las lluvias cortan carreteras y el limón y la cebolla se disparan. ¿Te dejas llevar por el pánico o miras más allá del choque?' }, // momento decisivo
         toolbox: ['encaje-baja', 'encaje-sube'], // caja de herramientas de la época
         kind: 'rate',
         number: 3,
@@ -148,6 +150,7 @@ export const CHAPTERS = [
     },
     {
         id: 'pandemia-2020',
+        climax: { turn: 1, scene: 'cuarentena', title: 'La economía se desploma', text: 'Con la cuarentena, miles de negocios no pueden pagar sueldos. El país entero espera que el BCR actúe, y rápido.' }, // momento decisivo
         toolbox: ['repos', 'encaje-baja'], // caja de herramientas de la época
         kind: 'rate',
         number: 4,
@@ -199,6 +202,7 @@ export const CHAPTERS = [
     },
     {
         id: 'inflacion-2022',
+        climax: { turn: 3, scene: 'mercado', title: 'La inflación más alta en 25 años', text: 'En junio de 2022 la inflación llega a 8.81%. El menú cuesta más cada semana y la gente pregunta qué está haciendo el BCR.' }, // momento decisivo
         toolbox: ['swaps', 'encaje-sube', 'encaje-dolares'], // caja de herramientas de la época
         kind: 'rate',
         number: 5,

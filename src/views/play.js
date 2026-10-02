@@ -1,4 +1,4 @@
-import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES } from '../game/mandate.js';
+import Mandate, { FX_MOVES, expectedDepreciation, CONGRESS, GUIDANCE, GUIDANCE_RULES, CLIMAX } from '../game/mandate.js';
 import { CHARACTERS } from '../model/events.js';
 import { PARAMS, inBand } from '../model/economy.js';
 import { fanChart, compareChart } from './fanChart.js';
@@ -16,6 +16,7 @@ import { tabs, bindTabs } from './tabs.js';
 import { bindMap } from './peruMap.js';
 import { icon, KIND_ICON, hawk, dove, bust, congressScene } from './icons.js';
 import { TOOLBOX, TOOL_BY_ID } from '../game/toolbox.js';
+import { scene } from './scenes.js';
 
 const pct = (v, d = 1) => `${v.toFixed(d)}%`;
 const moveLabel = m => m === 0 ? '=' : `${m > 0 ? '+' : '−'}${Math.abs(m).toFixed(2)}`;
@@ -485,7 +486,8 @@ export function playScenario(root, scenario, opts) {
         </header>
         <div class="andean-strip">${andeanBand}</div>
         ${missionBar(m, opts)}
-        <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}">
+        <main class="page mandate ${diff.hints ? 'hints-on' : 'hints-off'}${isClimax() ? ' climax' : ''}">
+          ${isClimax() ? `<div class="climax-banner">${icon('flame', { size: 18 })}<strong>Momento decisivo:</strong> ${m.scenario.climax.title}. Te comparas con el BCRP real (±${CLIMAX.reward} de credibilidad).</div>` : ''}
           <div class="meters${m.fx ? ' five' : ''}">${meters(m)}</div>
           <nav class="turn-nav" role="tablist" aria-label="Secciones del turno">${SECTIONS.map((sec, i) => `
             <button role="tab" data-goto="${sec.id}" aria-selected="${sec.id === section}" class="${sec.id === section ? 'on' : ''}${seen.has(sec.id) ? '' : ' unseen'}">
@@ -543,7 +545,29 @@ export function playScenario(root, scenario, opts) {
     };
 
     // El guion del tutorial para el turno se muestra cuando el turno empieza de verdad.
+    const climaxShown = new Set();
+    const isClimax = () => m.scenario.climax?.turn === m.quarter;
+
+    /** Momento decisivo: el pico de la crisis del capítulo, con su propia pantalla. */
+    const showClimax = () => {
+        const c = m.scenario.climax;
+        climaxShown.add(m.quarter);
+        music.setMood('surprise');
+        music.sting();
+        const modal = openModal(`
+          <div class="climax-intro">
+            <div class="ch-art">${scene(c.scene)}</div>
+            <div class="breaking-tag">${icon('flame', { size: 16 })} MOMENTO DECISIVO</div>
+            <h2>${c.title}</h2>
+            <p class="lead">${c.text}</p>
+            <div class="climax-rule">${icon('scale', { size: 18 })}<span>Este trimestre te comparas con lo que hizo el <strong>BCRP real</strong>, con los mismos imprevistos. Si lo igualas o lo mejoras: <strong>+${CLIMAX.reward} de credibilidad</strong>. Si no: <strong>−${CLIMAX.penalty}</strong>.</span></div>
+          </div>
+          <div class="modal-actions"><button class="btn btn-primary" data-go>Enfrentarlo</button></div>`, { dismissible: false, wide: true });
+        modal.querySelector('[data-go]').addEventListener('click', () => { modal.parentElement._close(); briefingCoach(); });
+    };
+
     const briefingCoach = () => {
+        if (isClimax() && !climaxShown.has(m.quarter)) return showClimax();
         music.setMood('decision');
         // Si el Congreso te citó, la sesión va antes de la reunión del Directorio.
         if (m.congress.pending) return showCitation();

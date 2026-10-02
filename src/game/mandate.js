@@ -55,6 +55,9 @@ export const CONGRESS = {
     envyCap: 60        // la envidia sola nunca te saca: llega justo a la zona de citaciones, no más
 };
 
+/** Momento decisivo: margen frente al BCRP real y premio o castigo de credibilidad. */
+export const CLIMAX = { inflationSlack: 0.25, growthSlack: 1.0, reward: 6, penalty: 6 };
+
 /** Cuando al BCR le va bien, algunos congresistas buscan protagonismo. Notas de juego, no citas reales. */
 const ENVY_NOTES = [
     'Te va bien y eso incomoda: algunos congresistas salen en los medios a decir que el BCR "no hace nada por la gente".',
@@ -333,6 +336,19 @@ export default class Mandate {
      * Inflación que habría logrado el BCRP real con esta misma semilla (mismos imprevistos
      * y ruido): repite su trayectoria de tasas y usa las herramientas cuando las usó (turno 1).
      */
+    /** Estados de cada turno replicando al BCRP real (para el momento decisivo). */
+    static replayRealStates(seed, scenario) {
+        const m = new Mandate(seed, scenario);
+        m.reference = true;
+        let i = 0;
+        while (!m.isOver) {
+            if (i === 1) m.tools.forEach(t => m.useTool(t.id));
+            m.decide(scenario.realPath.rate[i], scenario.realPath.fxSales?.[i] ?? 0);
+            i++;
+        }
+        return m.history.slice(1).map(h => h.state);
+    }
+
     static replayReal(seed, scenario) {
         const m = new Mandate(seed, scenario);
         m.reference = true;
@@ -543,6 +559,17 @@ export default class Mandate {
         if (Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove) this.stats.bigMoves += 1;
         this.pressure = clamp(pressure, 0, 100);
 
+        // Momento decisivo del capítulo: te comparas con lo que logró el BCRP real, con los mismos imprevistos.
+        const climax = this.scenario.climax?.turn === this.quarter;
+        let climaxWon = null;
+        if (climax) {
+            const ref = this.reference ? s : Mandate.replayRealStates(this.seed, this.scenario)[this.quarter];
+            climaxWon = s.inflation <= ref.inflation + CLIMAX.inflationSlack && s.growth >= ref.growth - CLIMAX.growthSlack;
+            s = { ...s, credibility: clamp(s.credibility + (climaxWon ? CLIMAX.reward : -CLIMAX.penalty), 0, 100) };
+            notes.push(climaxWon
+                ? { tone: 'good', text: `Superaste el momento decisivo: lo hiciste igual o mejor que el BCRP real (inflación ${s.inflation.toFixed(1)}% frente a ${ref.inflation.toFixed(1)}%). Credibilidad +${CLIMAX.reward}.` }
+                : { tone: 'bad', text: `En el momento decisivo, el BCRP real lo hizo mejor (inflación ${ref.inflation.toFixed(1)}% y PBI ${ref.growth.toFixed(1)}%, frente a tus ${s.inflation.toFixed(1)}% y ${s.growth.toFixed(1)}%). Credibilidad −${CLIMAX.penalty}.` });
+        }
         this.state = s;
         const ok = inBand(s.inflation);
         this.streak = ok ? this.streak + 1 : 0;
@@ -571,6 +598,8 @@ export default class Mandate {
         record.fx = fxRecord;
         record.tone = tone;
         record.tool = tool?.id ?? null;
+        record.climax = climax;
+        record.climaxWon = climaxWon;
         record.envy = envy;
         record.envyTo = envyTo;
         this.lastEnvy = envy;
