@@ -19,6 +19,7 @@ Por qué: tres rediseños seguidos cambiaron las reglas pero no la forma de juga
 3. **El motor se conserva** (`model/`, `game/`, datos reales, Congreso, personajes). Se le agregan módulos puros nuevos; no se reescribe ni se recalibra salvo donde este plan lo dice.
 4. **Una fase = un commit**, con los tests en verde y la verificación en el navegador hecha. No se hace push a `main`.
 5. Todo texto para el jugador va **en español**, corto y concreto, con el tono peruano que ya tiene el juego.
+6. **El celular es la plataforma principal (decisión de Carlos, 10 de octubre).** Se diseña primero para un teléfono en vertical (390×844, y debe funcionar en 360×740). El escritorio es una adaptación posterior: más aire alrededor, nunca más información. Todo criterio de aceptación se mide primero en celular.
 
 ---
 
@@ -35,6 +36,8 @@ Un turno es **una carta, una elección y un mes que pasa**.
 7. **Arco de 12 meses**: una crisis grande en el mes 6 y un final ilustrado con arquetipo, estrellas y tarjeta para compartir.
 
 Arriba solo quedan **4 termómetros como íconos** (inflación, dólar, empleo, confianza) y **2 recursos como barras** (reservas, credibilidad). El número exacto aparece al tocar un ícono.
+
+**Pensado para el pulgar.** En un teléfono en vertical, de arriba abajo: el HUD en una franja delgada, la carta, las respuestas y el botón "Anunciar" fijo abajo, al alcance del pulgar. Se juega con una sola mano y sin hacer scroll en un mes normal. Nada depende de pasar el mouse.
 
 ---
 
@@ -182,33 +185,34 @@ Crea `src/views/turn/stage.js` con `playMandate(root, scenario, opts)`, con las 
   <div id="responses" class="t-responses">…2 a 4 cartas de respuesta…</div>
   <button id="finetune-open">Ajuste fino</button>
 </main>
+<footer class="t-actionbar"><button id="announce">Anunciar</button></footer>
 <aside id="finetune" class="t-finetune" hidden>…</aside>
 ```
 
 **El HUD** (`turn/hud.js`):
 
-- 4 termómetros: inflación (con su número), dólar (con su número), empleo (palabra: "Contratan", "Estable", "Despidos"…) y confianza (carita). Cada uno es un ícono de 40 px con una línea de texto como máximo.
+- 4 termómetros: inflación (con su número), dólar (con su número), empleo (palabra: "Contratan", "Estable", "Despidos"…) y confianza (carita). En celular van en **una sola fila** de 4 de hasta 64 px de alto en total, con el ícono y su valor debajo; en escritorio pueden llevar además una etiqueta corta.
 - 2 recursos: reservas y credibilidad, como barras finas **sin número**.
-- Tocar o hacer clic en cualquiera abre un popover con el número exacto, la meta o el límite, y una frase de qué significa. Usa `glossary.js` para el "¿qué es?".
+- Tocar cualquiera abre un popover (en celular, una hoja desde abajo) con el número exacto, la meta o el límite, y una frase de qué significa. Usa `glossary.js` para el "¿qué es?".
 - Los colores de juicio (verde, ámbar, rojo) solo en dificultad Fácil (`hints`). En Normal y Difícil el HUD es neutro.
 - La misión va en una sola línea dentro del HUD: "Inflación entre 1% y 3% al menos 8 de 12 meses, sin apagar el país".
 
 **La carta** (`turn/card.js`):
 
-- Ancho de 560 a 640 px en escritorio y de toda la pantalla en celular. Arriba, el número de carta ("Carta 3 de 12"), el tipo con ícono (`KIND_ICON`) y el personaje con su busto (`bust()` de `icons.js`).
+- En celular ocupa todo el ancho (con 16 px de margen) y como máximo el 45% del alto de la pantalla; en escritorio, de 560 a 640 px de ancho. Arriba, el número de carta ("Carta 3 de 12"), el tipo con ícono (`KIND_ICON`) y el personaje con su busto (`bust()` de `icons.js`).
 - Un titular grande (serif), la frase del personaje en un globo de diálogo y una línea "Golpea: …".
 - La crisis de mitad de mandato (`midterm`) y el momento decisivo de los capítulos (`climax`) tienen marco rojo, la etiqueta "MOMENTO DECISIVO" y una escena de `scenes.js` dentro de la carta.
 - Máximo 45 palabras en la carta.
 
 **Las respuestas** (`turn/responses.js`):
 
-- Una fila de 2 a 4 cartas chicas (en celular, en columna). Cada una muestra: el nombre (por ejemplo, "Apretar fuerte"), una línea `sub` con lo que hace ("Sube 50 pb y discurso firme"), las caritas de `preview.faces` que no sean 0 (solo esas, con ↑ o ↓), y como máximo 2 líneas de `preview.costs`.
-- Al pasar el mouse (o mantener presionado en celular) sobre una respuesta, el rango de inflación proyectado aparece en la carta como una frase: "Si haces esto, la inflación iría a 2.1%–2.9% en 6 meses". No hay gráfico en el turno.
+- En celular, una **lista vertical** de 2 a 4 respuestas, cada una de al menos 56 px de alto y de todo el ancho (área táctil mínima de 44×44 px). En escritorio pueden ir en fila. Cada una muestra: el nombre (por ejemplo, "Apretar fuerte"), una línea `sub` con lo que hace ("Sube 50 pb y discurso firme"), las caritas de `preview.faces` que no sean 0 (solo esas, con ↑ o ↓), y como máximo 2 líneas de `preview.costs`.
+- **Tocar una respuesta la selecciona** (no hay hover en celular): queda resaltada y el rango de inflación proyectado aparece en la carta como una frase: "Si haces esto, la inflación iría a 2.1%–2.9% en 6 meses". En escritorio, el hover puede mostrar lo mismo, pero nunca puede ser la única forma de verlo. No hay gráfico en el turno.
 - `preview.noMajority` se muestra como una etiqueta "Sin mayoría en el Directorio".
-- Elegir una respuesta la marca; un botón "Anunciar" (o Enter) la confirma. **Dos toques como máximo** para pasar el mes.
+- El botón **"Anunciar" va fijo abajo** (`#announce`, en la barra `.t-actionbar`, respetando `env(safe-area-inset-bottom)`), deshabilitado hasta elegir. Dice qué vas a anunciar ("Anunciar: Paso medido"). **Dos toques como máximo** para pasar el mes: elegir y anunciar.
 - Teclado: flechas para moverse entre respuestas, Enter para anunciar.
 
-**El ajuste fino** (`turn/finetune.js`): un cajón lateral (en celular, desde abajo) con los controles de hoy pero rediseñados en forma compacta. Usa `game/actions.js` para el límite de 2 acciones:
+**El ajuste fino** (`turn/finetune.js`): en celular, una **hoja que sube desde abajo** (bottom sheet) que cubre hasta el 85% de la pantalla y se cierra deslizando hacia abajo o con un botón; en escritorio, un cajón lateral. Lleva los controles de hoy rediseñados en forma compacta y táctil. Usa `game/actions.js` para el límite de 2 acciones:
 
 - tasa (7 pasos);
 - dólares (`FX_MOVES`);
@@ -217,14 +221,15 @@ Crea `src/views/turn/stage.js` con `playMandate(root, scenario, opts)`, con las 
 
 Si el jugador usa el ajuste fino, ese plan reemplaza a la respuesta elegida y la UI muestra "Plan propio". Mientras está abierto, el reloj sigue corriendo.
 
-**El reloj:** usa `createTimer` de `common.js`. Se dibuja como una barra que se vacía alrededor de la carta (o arriba en celular). En los últimos 10 segundos cambia de color y suena `music.click()` una vez por segundo. Al agotarse, llama a `applyResponse(m, esperar, { timeout: true })`. El silencio ya lo cobra el motor: −3 de credibilidad, el dólar se agita y el titular dice que el BCR quedó mudo.
+**El reloj:** usa `createTimer` de `common.js`. En celular es una barra fina que se vacía en el borde superior de la carta; en escritorio puede rodearla. Si el teléfono lo permite, vibra suavemente en los últimos 3 segundos (`navigator.vibrate?.(30)`, opcional). En los últimos 10 segundos cambia de color y suena `music.click()` una vez por segundo. Al agotarse, llama a `applyResponse(m, esperar, { timeout: true })`. El silencio ya lo cobra el motor: −3 de credibilidad, el dólar se agita y el titular dice que el BCR quedó mudo.
 
-**Estilos** (`src/turn.css`): de cero. Paleta y tipografías existentes (variables de `:root` en `styles.css`). La carta tiene sombra profunda y se siente física; las respuestas se elevan al pasar el mouse. Animación de entrada de la carta (deslizar y voltear, 300 ms). `prefers-reduced-motion` desactiva todas las animaciones.
+**Estilos** (`src/turn.css`): de cero. Paleta y tipografías existentes (variables de `:root` en `styles.css`). Escribe el CSS **mobile-first**: los estilos base son para celular y los de escritorio van dentro de `@media (min-width: 900px)`. La carta tiene sombra profunda y se siente física; al tocar una respuesta, se hunde un poco (`:active`) y queda resaltada. Animación de entrada de la carta (deslizar y voltear, 300 ms). `prefers-reduced-motion` desactiva todas las animaciones.
 
 **Aceptación de la Fase 2** (medir en el navegador, sección 5):
 
-- En el mes 1 del modo libre, antes de decidir, dentro de `#hud` + `#stage`: **menos de 80 palabras**, **10 números o menos** y **8 botones o menos** (sin contar los del encabezado).
-- La carta es el elemento más grande del viewport en escritorio (1440×900) y en celular (390×844), y en ambos se ve completa sin hacer scroll.
+- **Medido primero en celular (390×844):** en el mes 1 del modo libre, antes de decidir, dentro de `#hud` + `#stage`: **menos de 80 palabras**, **10 números o menos** y **8 botones o menos** (sin contar los del encabezado).
+- En 390×844 **y en 360×740**: la carta, todas las respuestas y "Anunciar" se ven sin hacer scroll; ningún elemento se sale del ancho (`document.documentElement.scrollWidth === innerWidth`); todo lo tocable mide al menos 44×44 px.
+- La carta es el elemento más grande del viewport en celular y en escritorio (1440×900).
 - Un jugador puede pasar el mes 1 con 2 clics.
 - Sin errores en la consola. Tests en verde.
 
@@ -238,8 +243,8 @@ Si el jugador usa el ajuste fino, ese plan reemplaza a la respuesta elegida y la
 4. Los dos personajes con mayor cambio de ánimo aparecen con su frase (`castLines`), con un pequeño salto (1,500 ms).
 5. Cae el titular (`rec.headline`) con la lección de la carta (`cardLesson`) en una línea (1,000 ms).
 
-- Total: **menos de 6 segundos**. Un clic, un toque o Enter salta al final.
-- Al terminar queda un botón "Siguiente mes" (que también se activa con Enter) y un enlace "Ver el diario".
+- Total: **menos de 6 segundos**. Un toque en cualquier parte, o Enter, salta al final. En celular, todo ocurre dentro de la pantalla visible, sin scroll.
+- Al terminar, el botón fijo de abajo cambia a "Siguiente mes" (también con Enter) y aparece un enlace "Ver el diario".
 - "Ver el diario" abre un modal simple con 3 cifras (inflación, PBI, dólar) y su cambio, el "¿por qué?" (`rec.drivers`) y las notas del motor (`rec.notes`). Nada de pestañas.
 - Si el capítulo tiene historia real (`rec.real`), agrega en el paso 5 una etiqueta: "El BCRP real: subió 50 pb".
 - Las frases reales de congresistas (`rec.declaration`) aparecen en el paso 4 con el **ícono del Congreso**, nunca con un busto, y con la etiqueta "Frase real de un congresista (año)". Esto es obligatorio por anonimato (ver `CLAUDE.md`).
@@ -285,7 +290,8 @@ Si el jugador no fue ratificado, el texto dice por qué en una frase: le faltaro
 
 **Aceptación de la Fase 4:**
 
-- El final se lee en una pantalla sin hacer scroll hasta los botones, en escritorio y en celular.
+- En celular (390×844), la escena, el arquetipo, las estrellas y el botón "Compartir" se ven sin hacer scroll; el resto puede quedar debajo. En escritorio, todo hasta los botones en una pantalla.
+- "Compartir" usa `navigator.share` con la imagen cuando el teléfono lo permite (ya lo hace `shareCard.js`).
 - La crisis del mes 6 se distingue a simple vista de los demás meses.
 
 ### Fase 5. Migrar todos los modos y borrar lo viejo
@@ -352,7 +358,7 @@ Si no cabe limpio, déjalo como está y anótalo.
 
 ## 5. Cómo verificar en el navegador (cada fase)
 
-1. Corre `npm run dev` y abre http://localhost:3000 en escritorio (1440×900) y en un iframe o ventana de 390×844.
+1. Corre `npm run dev` y abre http://localhost:3000 **primero en celular**: un iframe o ventana de 390×844 (y luego 360×740). Después, en escritorio (1440×900). Si la ventana no se puede achicar, usa un iframe del tamaño exacto y lee las métricas dentro de él (`iframe.contentWindow`).
 2. Entra al modo libre, cierra el modal de inicio y, **antes de decidir**, corre en la consola:
 
 ```js
@@ -362,18 +368,25 @@ const text = zone.map(el => el.innerText).join(' ');
   palabras: text.split(/\s+/).filter(Boolean).length,          // objetivo: < 80
   numeros: (text.match(/\d+[.,]?\d*%?/g) || []).length,        // objetivo: ≤ 10
   botones: zone.reduce((n, el) => n + el.querySelectorAll('button').length, 0), // objetivo: ≤ 8
-  cartaVisible: (() => { const r = document.querySelector('#card').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })()
+  cartaVisible: (() => { const r = document.querySelector('#card').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight; })(),
+  anunciarVisible: (() => { const r = document.querySelector('#announce').getBoundingClientRect(); return r.bottom <= innerHeight; })(),
+  sinDesborde: document.documentElement.scrollWidth === innerWidth,
+  tocablesChicos: [...document.querySelectorAll('#stage button, #hud button, #announce')]
+    .filter(b => { const r = b.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length   // objetivo: 0
 })
 ```
 
 3. Juega 3 meses completos y cuenta los clics y los segundos entre "Anunciar" y la carta siguiente.
 4. Revisa la consola: cero errores.
-5. Toma capturas de escritorio y celular para el informe.
+5. Toma capturas de celular (390×844) y de escritorio para el informe.
 
 ---
 
-## 6. Preguntas abiertas (para Carlos; no bloquean el plan)
+## 6. Decisiones y preguntas abiertas
 
-- ¿La plataforma principal es el celular? Si es así, en la Fase 2 se diseña primero para 390 px.
+**Decidido:** el celular es la plataforma principal (Carlos, 10 de octubre de 2026). Ver la regla 6 de la sección 0.
+
+**Abiertas (no bloquean el plan):**
+
 - ¿El BCRP validará los textos educativos de cada carta y arquetipo?
 - ¿Se mantiene el reto semanal sin servidor, o más adelante se quiere un ranking real?

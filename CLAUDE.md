@@ -18,7 +18,8 @@ Rules for anyone working on the rebuild:
 2. **Do not adapt `src/views/play.js`.** It and the old turn CSS are discarded. Write the new turn screen in new files (`src/views/turn/*`, `src/turn.css`). Do not copy their HTML or CSS. Read the old code only to see how it calls the engine.
 3. **Do not fall in love with what exists.** A UI piece that the plan doesn't mention is not ported. When in doubt, leave it out and list it under open questions in your report.
 4. **Keep the engine and the data** (`src/model/*`, `src/game/*`): add only what the plan says. Never change `PARAMS` in `economy.js`, chapter calibration or real data.
-5. The target turn is **one card, one choice, one month passing**: a big card center stage, 2–4 named responses with visible costs (cast faces), "Ajuste fino" hidden for exact controls, a timer around the card, one animated "el mes pasa" (no modals), and consequence/Congress cards in the same stage. Charts, the map and the human balance live only in the ending.
+5. **Mobile first.** The phone in portrait is the main platform (390×844, must work at 360×740): thumb-reachable fixed "Anunciar" button, tap-to-select (no hover-only info), 44×44 px touch targets, no horizontal overflow, a normal month playable without scrolling. Desktop adds room, never more information. Write CSS mobile-first (desktop inside `@media (min-width: 900px)`).
+6. The target turn is **one card, one choice, one month passing**: a big card center stage, 2–4 named responses with visible costs (cast faces), "Ajuste fino" hidden for exact controls, a timer around the card, one animated "el mes pasa" (no modals), and consequence/Congress cards in the same stage. Charts, the map and the human balance live only in the ending.
 
 Backup point before the rebuild: commit `57bef8b` on `rediseno-serious-game`.
 
@@ -70,7 +71,7 @@ The code is split into layers. Only `views/` and `audio/` touch the DOM or Web A
 
 **Being replaced (see the plan; do not extend):** `src/views/play.js` (`playScenario`, `renderVerdict`: the "mesa de mando" with HUD, levers, tradeoff table, board seats, reaction feed and tabbed newspaper), `src/views/tutorialScript.js`, and the old turn sections of `src/styles.css`.
 
-**Target after the rebuild:** `src/views/turn/` (`stage.js` with `playMandate`, `hud.js`, `card.js`, `responses.js`, `finetune.js`, `monthPasses.js`, `ending.js` with `renderEnding`, `tutorial.js`), `src/turn.css`, and `src/views/common.js` with the shared helpers (`avatar`, `shortLabel`, `animateNumber`, `createTimer`, `announceSuspense`, `showBreaking`, `BILL_ICON`). Fixed DOM ids for the coach and checks: `#hud`, `#stage`, `#timer`, `#card`, `#responses`, `#finetune-open`, `#finetune`.
+**Target after the rebuild:** `src/views/turn/` (`stage.js` with `playMandate`, `hud.js`, `card.js`, `responses.js`, `finetune.js`, `monthPasses.js`, `ending.js` with `renderEnding`, `tutorial.js`), `src/turn.css`, and `src/views/common.js` with the shared helpers (`avatar`, `shortLabel`, `animateNumber`, `createTimer`, `announceSuspense`, `showBreaking`, `BILL_ICON`). Fixed DOM ids for the coach and checks: `#hud`, `#stage`, `#timer`, `#card`, `#responses`, `#finetune-open`, `#finetune`, `#announce`.
 
 **Kept:**
 - `views/intro.js`: title screen and the "¿Qué es el BCR?" intro.
