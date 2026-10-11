@@ -11,7 +11,7 @@ export function fanChart({ history, projection, total, labels }) {
     const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
     const now = history.length - 1;
 
-    const vals = [...history.map(h => h.state.inflation), ...projection.map(p => p.inflation)];
+    const vals = [...history.map(h => h.state.inflation), ...projection.flatMap(p => [p.lo ?? p.inflation, p.hi ?? p.inflation])];
     const yMax = Math.max(7, Math.ceil(Math.max(...vals) + 1));
     const yMin = Math.min(0, Math.floor(Math.min(...vals) - 0.5));
     const x = i => pad.l + (i / total) * iw;
@@ -27,20 +27,22 @@ export function fanChart({ history, projection, total, labels }) {
     const xl = labels.map((t, i) => (i % 2 === 0 || total <= 8) && t
         ? `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${t}</text>` : '').join('');
 
-    // Abanico: mediana + bandas de 1 y 2 "desvíos" que crecen con el horizonte.
+    // Niebla: la proyección es un rango. Si el motor manda `lo`/`hi` (según la credibilidad), ese es
+    // el borde exterior; si no, un abanico que se abre con el horizonte.
     const steps = projection.slice(0, Math.max(0, total - now));
     const origin = history[now].state.inflation;
-    const pts = [{ i: now, v: origin, u: 0 }, ...steps.map((p, k) => ({ i: now + k + 1, v: p.inflation, u: 0.2 * (k + 1) }))];
+    const pts = [{ i: now, v: origin, u: 0 }, ...steps.map((p, k) => ({ i: now + k + 1, v: p.inflation, u: p.hi != null ? (p.hi - p.lo) / 4 : 0.2 * (k + 1) }))];
     const area = mult => {
         const up = pts.map(p => `${x(p.i)},${y(p.v + p.u * mult)}`);
         const down = pts.slice().reverse().map(p => `${x(p.i)},${y(p.v - p.u * mult)}`);
         return `M${up.join(' L')} L${down.join(' L')} Z`;
     };
+    const last = pts.at(-1);
     const fan = pts.length > 1 ? `
         <path d="${area(2)}" fill="var(--fan-2)"/>
         <path d="${area(1)}" fill="var(--fan-1)"/>
         <polyline points="${pts.map(p => `${x(p.i)},${y(p.v)}`).join(' ')}" fill="none" stroke="var(--navy-2)" stroke-width="2.5" stroke-dasharray="5 5"/>
-        <text x="${x(pts.at(-1).i) - 4}" y="${y(pts.at(-1).v) - 10}" text-anchor="end" font-size="12" font-weight="700" fill="var(--navy-2)">Proyección ${pts.at(-1).v.toFixed(1)}%</text>` : '';
+        <text x="${x(last.i) - 4}" y="${y(last.v + 2 * last.u) - 8}" text-anchor="end" font-size="12" font-weight="700" fill="var(--navy-2)">Entre ${(last.v - 2 * last.u).toFixed(1)}% y ${(last.v + 2 * last.u).toFixed(1)}%</text>` : '';
 
     const line = history.map((h, i) => `${x(i)},${y(h.state.inflation)}`).join(' ');
     const dots = history.map((h, i) => {

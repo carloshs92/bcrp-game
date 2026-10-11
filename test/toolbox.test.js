@@ -5,7 +5,8 @@ import { TOOLBOX, unlockedTools } from '../src/game/toolbox.js';
 import { CHAPTERS } from '../src/model/history.js';
 import { staffRecommendation } from '../src/model/economy.js';
 
-const ALL = { ...FREE_SCENARIO, toolbox: TOOLBOX.map(t => t.id) };
+// Todas las herramientas listas desde el primer turno (sin esperar al mes 6 para el encaje).
+const ALL = { ...FREE_SCENARIO, toolbox: TOOLBOX.map(t => t.id), toolUnlock: {} };
 const fresh = (seed = 4) => {
     const m = new Mandate(seed, ALL);
     m.congress.pending = null;
@@ -65,4 +66,15 @@ test('herramientas: usarlas todas sin criterio no es mejor que no usarlas', () =
     const none = rate(() => null);
     const spam = rate(m => TOOLBOX.map(t => t.id).find(id => m.toolReady(id)) ?? null);
     assert.ok(spam <= none + 0.02, `todo ${spam} vs nada ${none}`);
+});
+
+test('herramientas: en el modo libre el encaje se desbloquea en el mes 6', () => {
+    const m = new Mandate(4, { ...FREE_SCENARIO, toolbox: ['encaje-sube'] });
+    for (let i = 0; i < 5; i++) {
+        assert.equal(m.toolReady('encaje-sube'), false, `mes ${i + 1}`);
+        m.congress.pending = null;
+        m.congress.pendingBill = null;
+        m.decide(m.state.rate);
+    }
+    assert.equal(m.toolReady('encaje-sube'), true);
 });

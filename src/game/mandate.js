@@ -2,6 +2,7 @@ import { TOOL_BY_ID } from './toolbox.js';
 import { createState, step, inBand, neutralRate, PARAMS, staffRecommendation } from '../model/economy.js';
 import { EVENTS, EVENT_BY_ID, SURPRISES, SURPRISE_BY_ID } from '../model/events.js';
 import { rateMoods, regionMoods } from './people.js';
+import { consequenceCards } from './consequences.js';
 import { QUESTIONS, ANSWER_EFFECTS, FOLLOW_UP, BILLS, BILL_RESPONSES, pickDeclaration } from '../model/congress.js';
 
 /**
@@ -26,7 +27,9 @@ export const FX = {
     saleEffect: 1.0,     // cada US$ 1 mil millones vendido reduce ~1% la depreciación
     passThrough: 0.12,   // 10% de depreciación suma ~1.2 al choque de oferta del trimestre
     balanceSheet: 0.06,  // dolarización: cada 1% de depreciación resta demanda
-    noise: 1.6
+    noise: 1.6,
+    calmPressure: 0.5,   // bajo esta presión (%), vender dólares no tiene razón de ser
+    idleSale: 1          // credibilidad perdida por cada US$ mil millones vendidos sin razón
 };
 
 /** Traslado a precios: asimétrico (los precios suben con el dólar más de lo que bajan). */
@@ -38,7 +41,22 @@ function passThrough(dep) {
 export function expectedDepreciation(pressure, move, sell) {
     return pressure - FX.rateEffect * move - FX.saleEffect * sell;
 }
-export const DEFAULT_LIMITS = { pressure: 100, credibility: 15, inflation: 7, growth: -3 };
+export const DEFAULT_LIMITS = { pressure: 100, credibility: 15, inflation: 7, growth: -3, inflationTurns: 1 };
+
+/** Las reservas se acaban cuando llegan al piso que el BCR no puede tocar (30% del nivel inicial). */
+export const RESERVE_FLOOR = 0.3;
+
+/**
+ * Confianza ciudadana (0–100): cómo ve la gente al BCR. Sigue el ánimo de los sectores, cae con la
+ * inflación alta y la recesión, y la mueven las cartas de consecuencia. No cambia el modelo macro.
+ */
+export const TRUST = { start: 60, base: 66, mood: 6, inflation: 9, recession: 6, jobs: 10, dollar: 1.5, speed: 0.4 };
+
+/**
+ * Niebla: la proyección es un rango, no un número. Con más credibilidad el rango se estrecha.
+ * Ancho (pp de inflación) por turno de horizonte: base + extra × (1 − credibilidad/100).
+ */
+export const FOG = { base: 0.12, extra: 0.45 };
 
 /** El Congreso: qué tan rápido se enoja y cuándo interrumpe al Directorio. */
 export const CONGRESS = {
@@ -75,6 +93,12 @@ export const BOARD_RULES = { tolerance: 0.5, majority: 4, unanimous: 1, split: -
  * informal absorbe los desequilibrios del mercado laboral: en vez de desempleo, aparece chamba precaria.
  */
 export const INFORMAL = { gapEffect: 0.6, recovery: 0.25, revert: 0.1, min: 62, max: 82 };
+
+/** Puntaje del modo libre para 2 y 3 estrellas. */
+export const SCORE_STARS = [62, 78];
+
+/** Quedarse callado cuando se acaba el reloj: costo frente a esperar a propósito. */
+export const SILENCE = { credibility: 3, fx: 1.5 };
 
 /** Momento decisivo: margen frente al BCRP real y premio o castigo de credibilidad. */
 export const CLIMAX = { inflationSlack: 0.25, growthSlack: 1.0, reward: 6, penalty: 6 };
@@ -113,20 +137,36 @@ export function guidanceEffect(state, tone) {
 
 export const FREE_SCENARIO = {
     id: 'libre',
+    stepsPerTurn: 1,   // un turno = una reunión mensual del Directorio
+    turnUnit: 'mes',
+    startMonth: 0,
+    shockScale: 0.45,  // las cartas son del mes, no del trimestre
+    horizon: 6,        // la proyección mira seis meses adelante
+    hikePressure: 3,
+    congress: { citeGap: 3, billGap: 3 },
+    // El encaje se gana a mitad del mandato (mes 6) aunque no hayas jugado el modo historia.
+    toolUnlock: { 'encaje-sube': 5, 'encaje-baja': 5 },
+    limits: { inflation: 8, inflationTurns: 2 },
     board: true, // el Directorio vota tus propuestas
     informal: 70.2, // % de empleo informal (INEI, EPEN 2025)
+    midterm: { turn: 5 }, // crisis de mitad de mandato: mes 6 (índice 5)
     title: 'Modo libre',
     turns: 12,
     startYear: 2027,
-    initial: { rate: 4.25, outputGap: 0.3, core: 2.4, supply: 0.1, expectations: 2.3, credibility: 80 },
+    initial: { rate: 4.25, outputGap: 0.3, core: 2.4, supply: 0.1, expectations: 2.3, credibility: 70 },
     firstEvent: 'consumo-sube',
     randomEvents: true,
     intensityGrowth: 0.3,
     surpriseChance: 0.3,
     citations: true, // el Congreso cita al Directorio cuando está molesto
     bills: true,     // y presenta proyectos de ley que afectan al BCR
-    fx: { rate: 3.75, reserves: 80 }, // tipo de cambio S/ por US$ y reservas en US$ miles de millones
-    reappoint: { minInBand: 9 }
+    // Tipo de cambio S/ por US$ y reservas en US$ miles de millones. El piso es alto: el BCR guarda la
+    // mayor parte de las reservas como seguro, y lo que puede usar en un mandato es limitado.
+    fx: { rate: 3.75, reserves: 80, floor: 0.6 },
+    // Ratificación: inflación en meta Y sin apagar el país (sin esto, apretar siempre ganaba el 74% de las veces).
+    // minInBand en 9 (ajuste del 10 oct, Fase 1 del rehacer): con 8, copiar al staff sin ningún
+    // criterio adicional volvía a cruzar el 50% de reelección al medir con más semillas (300+).
+    reappoint: { minInBand: 9, minAvgGrowth: 1.8 }
 };
 
 // Compatibilidad: el modo libre sigue exponiendo estas constantes.
@@ -150,6 +190,13 @@ const roundQ = v => Math.round(v * 4) / 4;
 
 export function quarterLabel(q, startYear = FREE_SCENARIO.startYear) {
     return `T${(q % 4) + 1} ${startYear + Math.floor(q / 4)}`;
+}
+
+export const MONTHS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Set', 'Oct', 'Nov', 'Dic'];
+
+export function monthLabel(q, startYear = FREE_SCENARIO.startYear, startMonth = 0) {
+    const k = startMonth + q;
+    return `${MONTHS[k % 12]} ${startYear + Math.floor(k / 12)}`;
 }
 
 function scaleShock(shock = {}, k) {
@@ -206,12 +253,22 @@ export default class Mandate {
         this.limits = { ...DEFAULT_LIMITS, ...(scenario.limits ?? {}) };
         this.turns = scenario.turns;
         this.steps = scenario.stepsPerTurn ?? 3;
+        this.unit = scenario.turnUnit ?? (this.steps === 1 ? 'mes' : 'trimestre');
+        this.shockScale = scenario.shockScale ?? 1;
+        this.horizon = scenario.horizon ?? 4;
+        this.cg = { ...CONGRESS, ...(scenario.congress ?? {}) };
+        this.trust = scenario.trust ?? TRUST.start;
+        this.overLimit = 0;           // turnos seguidos con la inflación sobre el límite
+        this.consequences = [];       // cartas de consecuencia que se muestran al empezar el turno
+        this.consequenceLog = [];     // todas las que salieron, con su turno
+        this.records = [];            // cada turno jugado, para las consecuencias y el final
+        this.consequenceCooldown = {};
         this.minRate = scenario.minRate ?? 0.25;
         this.moves = scenario.moves ?? MOVES;
         this.maxMove = Math.max(...this.moves.map(Math.abs));
         this.gradual = !!scenario.monthlyMeetings;
         // Mercado cambiario (opcional por escenario): tipo de cambio y reservas en US$ miles de millones.
-        this.fx = scenario.fx ? { rate: scenario.fx.rate, reserves: scenario.fx.reserves, initialReserves: scenario.fx.reserves, lastDep: 0 } : null;
+        this.fx = scenario.fx ? { rate: scenario.fx.rate, reserves: scenario.fx.reserves, initialReserves: scenario.fx.reserves, floor: scenario.fx.floor ?? RESERVE_FLOOR, lastDep: 0 } : null;
         this.fxStart = this.fx?.rate ?? null;
         this.state = createState(scenario.initial);
         this.state.growth = this.params.potentialGrowth + this.state.outputGap;
@@ -227,12 +284,13 @@ export default class Mandate {
         this.stats = { resisted: 0, ceded: 0, bigMoves: 0, surprises: 0, guidanceKept: 0, guidanceBroken: 0, maxPressure: 0, envyTurns: 0, combos: 0, climaxWon: false, convinced: 0, lostVotes: 0 };
         this.tools = (scenario.tools ?? []).map(t => ({ ...t, left: t.uses ?? 1 }));
         this.effects = []; // efectos de herramientas que duran varios turnos
+        this.styleLog = []; // cada decisión frente a la del equipo técnico (para el arquetipo)
         // El comunicado existe desde las metas de inflación (2002); el tutorial y 1990 no lo usan.
         this.guidanceOn = scenario.guidance !== false;
         this.guidance = null; // tono del último comunicado, que compromete el turno siguiente
         // Caja de herramientas: lo que el escenario (o lo ganado en la historia) permite usar, una por turno.
         this.toolbox = (scenario.toolbox ?? []).map(id => TOOL_BY_ID[id]).filter(t => t && (!t.needsFx || scenario.fx))
-            .map(t => ({ ...t, readyAt: 0, used: 0 }));
+            .map(t => ({ ...t, readyAt: scenario.toolUnlock?.[t.id] ?? 0, unlockAt: scenario.toolUnlock?.[t.id] ?? 0, used: 0 }));
         this.lastTool = null;
         this.fxPassMult = 1; // baja para siempre con la desdolarización
         // Informalidad: el colchón del mercado laboral. Sube cuando la economía crece bajo su potencial.
@@ -240,7 +298,7 @@ export default class Mandate {
         this.informalBase = scenario.informal ?? null;
         this.peopleHistory = []; // ánimo de cada sector, turno a turno
         this.regionHistory = []; // ánimo de cada departamento, turno a turno
-        this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
+        this.history = [{ state: this.state, rate: this.state.rate, pressure: this.pressure, trust: this.trust, label: 'Inicio', fx: scenario.fx?.rate ?? null, reserves: scenario.fx?.reserves ?? null }];
         // El Congreso usa su propio azar para no alterar la secuencia de choques (y la calibración).
         this.crng = mulberry32((seed ^ 0x5bd1e995) >>> 0);
         // Y el dólar, otro: se consume exactamente una vez por turno, decida lo que decida el jugador.
@@ -256,7 +314,29 @@ export default class Mandate {
     }
 
     label(q = this.quarter) {
-        return this.scenario.labels?.[q] ?? quarterLabel(q, this.scenario.startYear);
+        if (this.scenario.labels?.[q]) return this.scenario.labels[q];
+        return this.unit === 'mes' ? monthLabel(q, this.scenario.startYear, this.scenario.startMonth ?? 0) : quarterLabel(q, this.scenario.startYear);
+    }
+
+    /** Palabra para el turno: "mes" o "trimestre" (y su plural). */
+    unitWord(n = 1) {
+        return n === 1 ? this.unit : this.unit === 'mes' ? 'meses' : 'trimestres';
+    }
+
+    /** Intensidad de las cartas: suben a medida que avanza el mandato (solo con eventos al azar). */
+    intensity() {
+        return (1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / (this.scenario.yearLength ?? 4))) * this.shockScale;
+    }
+
+    /** El choque de la carta del mes, ya escalado: lo que el equipo técnico ve venir. */
+    eventShock() {
+        return scaleShock(this.event.shock, this.intensity());
+    }
+
+    /** Ancho de la niebla de la proyección a `k` turnos (1 = el próximo). */
+    fog(k) {
+        const perTurn = (FOG.base + FOG.extra * (1 - this.state.credibility / 100)) * Math.sqrt(this.steps);
+        return perTurn * Math.sqrt(k) * 1.4;
     }
 
     labels() {
@@ -273,6 +353,15 @@ export default class Mandate {
             return this.take(e);
         }
         if (!this.scenario.randomEvents) return EVENT_BY_ID.calma;
+        // Crisis de mitad de mandato: una carta fuerte (tier 3) todavía no usada, marcada aparte.
+        if (this.scenario.midterm && this.quarter === this.scenario.midterm.turn) {
+            const pool = EVENTS.filter(e => e.tier === 3 && !this.used.has(e.id));
+            if (pool.length) {
+                const e = pool[Math.floor(this.rng() * pool.length)];
+                this.take(e);
+                return { ...e, midterm: true };
+            }
+        }
         // La intensidad sube con el mandato: año 1 suave, año 2 medio, año 3 fuerte.
         const year = Math.min(2, Math.floor(this.quarter / (this.scenario.yearLength ?? 4)));
         const weights = [[1, 0, 0], [0.35, 0.65, 0], [0.1, 0.4, 0.5]][year];
@@ -404,12 +493,25 @@ export default class Mandate {
 
     /** Presión sobre el dólar de este turno según el evento (sin imprevistos). */
     fxPressure() {
-        return this.event.fx ?? 0;
+        return this.eventFx(this.event);
+    }
+
+    /** Presión de una carta sobre el dólar. Un rumor (`credShield`) pesa menos cuanto más creíble es el BCR. */
+    eventFx(e) {
+        const shield = e?.credShield ? 1.6 - this.state.credibility / 100 : 1;
+        return (e?.fx ?? 0) * this.shockScale * shield;
     }
 
     /** Cuánto se puede vender sin bajar del piso de reservas (30% del nivel inicial). */
     maxSale() {
-        return this.fx ? Math.max(0, this.fx.reserves - 0.3 * this.fx.initialReserves) : 0;
+        return this.fx ? Math.max(0, this.fx.reserves - this.fx.floor * this.fx.initialReserves) : 0;
+    }
+
+    /** Reservas que todavía se pueden usar (sobre el piso), de 0 a 1. */
+    reserveShare() {
+        if (!this.fx) return 1;
+        const usable = (1 - this.fx.floor) * this.fx.initialReserves;
+        return Math.max(0, Math.min(1, (this.fx.reserves - this.fx.floor * this.fx.initialReserves) / usable));
     }
 
     /** Lo que prefiere cada director este turno (movimiento de tasa). */
@@ -447,7 +549,8 @@ export default class Mandate {
             const dep = expectedDepreciation(this.fxPressure() + g.fx + this.brokenFx(rate - this.state.rate) + this.toolFx() + (tool?.fx ?? 0), rate - this.state.rate, sell);
             extra = addShock(extra, { supply: passThrough(dep) * this.fxPassMult, demand: -FX.balanceSheet * Math.max(0, dep) });
         }
-        return projectPath(g.start, rate, this.event, 4, this.params, this.steps, extra, this.gradual);
+        const path = projectPath(g.start, rate, { shock: this.eventShock() }, this.horizon, this.params, this.steps, extra, this.gradual);
+        return path.map((p, k) => ({ ...p, lo: p.inflation - this.fog(k + 1), hi: p.inflation + this.fog(k + 1) }));
     }
 
     /** ¿Este movimiento rompe lo que dijo el comunicado anterior? */
@@ -470,7 +573,7 @@ export default class Mandate {
         return true;
     }
 
-    decide(newRate, sell = 0, tone = 'neutral', toolId = null, { convinced = null } = {}) {
+    decide(newRate, sell = 0, tone = 'neutral', toolId = null, { convinced = null, timeout = false } = {}) {
         // Un proyecto de ley sin respuesta se da por "no opinar".
         if (this.congress.pendingBill) this.answerBill(2);
         newRate = Math.max(this.minRate, newRate);
@@ -487,10 +590,13 @@ export default class Mandate {
             if (!board.passes) newRate = prev.rate;
         }
         const move = newRate - prev.rate;
+        this.styleLog.push({ move, staff: Math.max(this.minRate, staffRecommendation(prev)) - prev.rate, timeout: !!timeout });
         const notes = [];
         const surprise = this.drawSurprise();
         if (surprise) this.stats.surprises += 1;
         if (!this.guidanceOn || !GUIDANCE[tone]) tone = 'neutral';
+        // Si se acabó el reloj, el BCR no dijo nada: no hay comunicado.
+        if (timeout) tone = 'neutral';
         const voice = guidanceEffect(prev, tone);
         // La herramienta del turno entra como un efecto más (puede durar varios turnos).
         const tool = this.toolReady(toolId) ? this.toolbox.find(x => x.id === toolId) : null;
@@ -501,12 +607,12 @@ export default class Mandate {
         }
 
         // Los choques pegan más fuerte a medida que avanza el mandato (solo modo libre).
-        const intensity = 1 + (this.scenario.intensityGrowth ?? 0) * Math.floor(this.quarter / (this.scenario.yearLength ?? 4));
-        let total = addShock(addShock(addShock(scaleShock(event.shock, intensity), surprise?.shock), this.toolShock()), voice.shock);
+        const intensity = this.intensity();
+        let total = addShock(addShock(addShock(scaleShock(event.shock, intensity), scaleShock(surprise?.shock, this.shockScale)), this.toolShock()), voice.shock);
         // Mercado cambiario: se resuelve antes que los precios, porque el dólar se traslada a la inflación.
         let fxRecord = null;
         if (this.fx) {
-            const pressure = (event.fx ?? 0) + (surprise?.fx ?? 0) + voice.fx + this.brokenFx(move) + this.toolFx();
+            const pressure = this.eventFx(event) + (surprise?.fx ?? 0) * this.shockScale + voice.fx + this.brokenFx(move) + this.toolFx() + (timeout ? SILENCE.fx : 0);
             const dep = expectedDepreciation(pressure, move, sell) + (this.fxRng() - 0.5) * FX.noise;
             const before = { ...this.fx };
             this.fx.rate *= 1 + dep / 100;
@@ -602,19 +708,20 @@ export default class Mandate {
 
         // Presión política: se disipa sola, las alzas son impopulares y los pedidos ignorados pesan.
         const hikeCost = this.scenario.hikePressure ?? 4; // presión por cada 25 pb de alza
-        let pressure = this.pressure + (CONGRESS.start - this.pressure) * CONGRESS.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
+        const CG = this.cg;
+        let pressure = this.pressure + (CG.start - this.pressure) * CG.revert + Math.max(0, move) / 0.25 * hikeCost - Math.max(0, -move) / 0.25 * 2;
         pressure += (surprise?.pressure ?? 0) + voice.pressure + (tool?.effect.pressure ?? 0);
         // El éxito también molesta (envidia, ganas de figurar), pero solo hasta un tope.
         let envy = 0, envyTo = null;
-        if (!this.reference && inBand(s.inflation) && s.credibility >= CONGRESS.envyCred && pressure < CONGRESS.envyCap) {
-            envy = Math.min(CONGRESS.envyCap - pressure, CONGRESS.envy * (1 + 0.5 * Math.min(this.streak, 2)));
+        if (!this.reference && inBand(s.inflation) && s.credibility >= CG.envyCred && pressure < CG.envyCap) {
+            envy = Math.min(CG.envyCap - pressure, CG.envy * (1 + 0.5 * Math.min(this.streak, 2)));
             pressure += envy;
             envyTo = pressure;
             notes.push({ tone: 'warn', text: ENVY_NOTES[this.quarter % ENVY_NOTES.length] });
         }
         if (event.asks === 'bajar') {
             if (move > 0) {
-                pressure += event.pressure * CONGRESS.askWeight;
+                pressure += event.pressure * CG.askWeight;
                 this.stats.resisted += 1;
                 notes.push({ tone: 'warn', text: 'Ignoraste el pedido de bajar la tasa: sube la presión política.' });
             } else if (move < 0) {
@@ -632,6 +739,12 @@ export default class Mandate {
         }
         if (promiseNote) notes.push(promiseNote);
         if (guidanceNote) notes.push(guidanceNote);
+        // El silencio no es lo mismo que esperar: si se acabó el reloj, el mercado lee parálisis.
+        if (timeout) {
+            s = { ...s, credibility: Math.max(0, s.credibility - SILENCE.credibility) };
+            this.stats.silences = (this.stats.silences ?? 0) + 1;
+            notes.push({ tone: 'bad', text: `Se acabó el tiempo y el BCR no dijo nada. El mercado lo leyó como parálisis: −${SILENCE.credibility} de credibilidad y el dólar se agitó. Esperar a propósito no cuesta esto; quedarse callado, sí.` });
+        }
         if (Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove) this.stats.bigMoves += 1;
         this.pressure = clamp(pressure, 0, 100);
 
@@ -653,18 +766,22 @@ export default class Mandate {
 
         const label = this.label();
         if (this.fx) {
-            const share = this.fx.reserves / this.fx.initialReserves;
-            if (share < 0.5) {
+            if (this.reserveShare() < 0.3) {
                 s = { ...s, credibility: Math.max(0, s.credibility - 3) };
                 notes.push({ tone: 'bad', text: `Las reservas bajaron a US$ ${this.fx.reserves.toFixed(1)} mil millones. Los mercados temen que el BCR ya no pueda defender al sol.` });
             }
-            if (fxRecord.dep > 4) notes.push({ tone: 'warn', text: `El dólar subió ${fxRecord.dep.toFixed(1)}% en el trimestre: quienes deben en dólares pagan más soles y lo importado se encarece.` });
+            // Vender dólares sin presión cambiaria gasta reservas para nada: el mercado lo nota.
+            if (fxRecord.sell > 0 && fxRecord.pressure < FX.calmPressure) {
+                s = { ...s, credibility: Math.max(0, s.credibility - FX.idleSale * fxRecord.sell) };
+                notes.push({ tone: 'warn', text: 'Vendiste dólares sin que hubiera presión sobre el sol. El mercado se pregunta por qué gastas reservas.' });
+            }
+            if (fxRecord.dep > 4) notes.push({ tone: 'warn', text: `El dólar subió ${fxRecord.dep.toFixed(1)}% en el ${this.unit}: quienes deben en dólares pagan más soles y lo importado se encarece.` });
         }
         const record = {
             quarter: this.quarter, label, event, surprise, prev, state: s,
             rate: newRate, move, drivers, notes,
             pressure: this.pressure, prevPressure,
-            projected: projectPath(prev, newRate, event, 1, this.params, this.steps, {}, this.gradual)[0].inflation,
+            projected: projectPath(prev, newRate, { shock: scaleShock(event.shock, intensity) }, 1, this.params, this.steps, {}, this.gradual)[0].inflation,
             streak: this.streak,
             real: this.scenario.realPath ? {
                 rate: this.scenario.realPath.rate[this.quarter],
@@ -688,25 +805,48 @@ export default class Mandate {
         if (this.informal !== null) {
             const before = this.informal;
             const gap = s.growth - this.params.potentialGrowth;
-            this.informal = clamp(before + INFORMAL.gapEffect * Math.max(0, -gap) - INFORMAL.recovery * Math.max(0, gap) + INFORMAL.revert * (this.informalBase - before), INFORMAL.min, INFORMAL.max);
+            const k = this.steps / 3; // calibrado por trimestre
+            this.informal = clamp(before + k * (INFORMAL.gapEffect * Math.max(0, -gap) - INFORMAL.recovery * Math.max(0, gap) + INFORMAL.revert * (this.informalBase - before)), INFORMAL.min, INFORMAL.max);
             record.informal = { before, after: this.informal };
             record.informalUp = this.informal - before;
             this.stats.maxInformal = Math.max(this.stats.maxInformal ?? 0, this.informal);
         }
         record.people = rateMoods(record, this.params.potentialGrowth);
         this.peopleHistory.push(record.people);
+        // Confianza ciudadana: sigue el ánimo de la gente; las cartas de consecuencia la mueven aparte.
+        const prevTrust = this.trust;
+        const avgMood = record.people.reduce((a, p) => a + p.mood, 0) / record.people.length;
+        const trustTarget = TRUST.base + TRUST.mood * avgMood - TRUST.inflation * Math.max(0, s.inflation - this.params.bandMax)
+            - TRUST.recession * Math.max(0, -s.growth) - TRUST.jobs * Math.max(0, this.params.potentialGrowth - 0.5 - s.growth)
+            - TRUST.dollar * Math.max(0, (fxRecord?.dep ?? 0) - 2);
+        this.trust = clamp(this.trust + TRUST.speed * (trustTarget - this.trust), 0, 100);
+        record.prevTrust = prevTrust;
+        record.sell = fxRecord?.sell ?? 0;
+        record.waited = move === 0 && !(fxRecord?.sell) && tone === 'neutral' && !tool;
         const fxTags = fxRecord ? (fxRecord.dep > 3 ? ['dolar'] : fxRecord.dep < -3 ? ['sol-fuerte'] : []) : [];
         record.regions = regionMoods({ state: s, move, tags: [...new Set([...(event.tags ?? []), ...(surprise?.tags ?? []), ...fxTags])] });
         this.regionHistory.push(record.regions);
         record.declaration = this.reference ? null : pickDeclaration({ move, pressure: this.pressure, year: this.year, rng: this.crng });
-        record.headline = headline({ ...record, surprising: Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove }, this.params);
-        this.history.push({ state: s, rate: newRate, pressure: this.pressure, label, fx: this.fx?.rate ?? null, reserves: this.fx?.reserves ?? null });
+        record.headline = timeout ? 'El BCR, mudo: se acabó el tiempo y no hubo decisión' : headline({ ...record, surprising: Math.abs(move) / (this.gradual ? this.steps : 1) > this.params.bigMove }, this.params);
+        this.records.push(record);
+        // Cartas de consecuencia: lo que hiciste hace unos turnos te alcanza (solo afectan confianza y Congreso).
+        this.consequences = this.reference ? [] : consequenceCards(this);
+        for (const c of this.consequences) {
+            this.trust = clamp(this.trust + (c.effect.trust ?? 0), 0, 100);
+            this.pressure = clamp(this.pressure + (c.effect.pressure ?? 0), 0, 100);
+            this.consequenceLog.push({ ...c, turn: this.quarter + 1 });
+        }
+        record.trust = this.trust;
+        record.pressure = this.pressure;
+        this.history.push({ state: s, rate: newRate, pressure: this.pressure, trust: this.trust, label, fx: this.fx?.rate ?? null, reserves: this.fx?.reserves ?? null });
 
         const L = this.limits;
+        this.overLimit = s.inflation >= L.inflation ? this.overLimit + 1 : 0;
         if (this.pressure >= L.pressure) this.gameOver = 'presion';
         else if (s.credibility <= L.credibility) this.gameOver = 'credibilidad';
-        else if (s.inflation >= L.inflation) this.gameOver = 'inflacion';
+        else if (this.overLimit >= (L.inflationTurns ?? 1)) this.gameOver = 'inflacion';
         else if (s.growth <= L.growth) this.gameOver = 'recesion';
+        else if (this.fx && this.reserveShare() <= 1e-6) this.gameOver = 'reservas';
 
         this.quarter += 1;
         if (!this.isOver) {
@@ -728,7 +868,7 @@ export default class Mandate {
             c.pending = QUESTIONS.find(q => q.id === scripted);
             return;
         }
-        if (!this.scenario.citations || this.pressure < CONGRESS.citeAt || this.quarter - c.lastCitation < CONGRESS.citeGap) return this.maybeBill();
+        if (!this.scenario.citations || this.pressure < this.cg.citeAt || this.quarter - c.lastCitation < this.cg.citeGap) return this.maybeBill();
         // Solo preguntas de la época del escenario (sin anacronismos).
         const [from, to] = this.scenario.citationYears ?? [0, this.year];
         const pool = QUESTIONS.filter(q => !c.used.has(q.id) && q.year >= from && q.year <= to);
@@ -743,11 +883,11 @@ export default class Mandate {
     maybeBill() {
         const c = this.congress;
         // Nunca en el primer turno: el jugador primero tiene que aprender a decidir.
-        if (this.reference || !this.scenario.bills || c.pending || this.quarter < 1 || this.quarter - c.lastBill < CONGRESS.billGap) return;
+        if (this.reference || !this.scenario.bills || c.pending || this.quarter < 1 || this.quarter - c.lastBill < this.cg.billGap) return;
         const [from, to] = this.scenario.billYears ?? [0, this.year];
         const pool = BILLS.filter(b => !c.usedBills.has(b.id) && b.year >= from && b.year <= to && (!b.effects.reserves || this.fx));
         if (!pool.length) return;
-        if (this.crng() >= CONGRESS.billBase + this.pressure / 300) return;
+        if (this.crng() >= this.cg.billBase + this.pressure / 300) return;
         const b = pool[Math.floor(this.crng() * pool.length)];
         c.usedBills.add(b.id);
         c.lastBill = this.quarter;
@@ -764,7 +904,7 @@ export default class Mandate {
         if (!bill) return null;
         const r = BILL_RESPONSES[i];
         const before = { pressure: this.pressure, credibility: this.state.credibility, reserves: this.fx?.reserves ?? null };
-        const passed = r.style !== 'oponerse' || this.pressure >= CONGRESS.insistAt;
+        const passed = r.style !== 'oponerse' || this.pressure >= this.cg.insistAt;
         const factor = !passed ? 0 : r.style === 'negociar' ? 0.5 : 1;
         this.pressure = clamp(this.pressure + r.pressure, 0, 100);
         let cred = this.state.credibility + r.credibility + (bill.effects.credibility ?? 0) * factor;
@@ -795,6 +935,11 @@ export default class Mandate {
         return { question: q, answer, fx, before, after: { pressure: this.pressure, credibility: this.state.credibility }, followUp: answer.style === 'evasiva' ? FOLLOW_UP : null };
     }
 
+    /** Confirma (cierra) la carta de consecuencia pendiente. Su efecto ya se aplicó al generarla. */
+    ackConsequence() {
+        this.consequences = [];
+    }
+
     evaluate() {
         const qs = this.history.slice(1).map(h => h.state);
         const inBandCount = qs.filter(s => inBand(s.inflation)).length;
@@ -804,6 +949,8 @@ export default class Mandate {
         const inflationLoss = avg(qs.map(s => (s.inflation - this.params.target) ** 2));
         const growthLoss = avg(qs.map(s => Math.max(0, 1.5 - s.growth) ** 2));
         const survived = !this.gameOver;
+        const avgTrust = avg(this.history.slice(1).map(h => h.trust ?? this.trust));
+        const avgGrowth = avg(qs.map(s => s.growth));
 
         const goals = this.scenario.goals;
         let checks = null;
@@ -823,17 +970,22 @@ export default class Mandate {
                 score = survived ? Math.max(0, Math.round(100 - 12 * inflationLoss - 4 * growthLoss)) : 0;
             }
         } else {
-            reappointed = survived && inBandCount >= this.scenario.reappoint.minInBand && inBand(final.inflation);
-            score = survived ? Math.max(0, Math.round(100 - 12 * inflationLoss - 8 * growthLoss)) : 0;
+            // Modo libre: meses en la meta + confianza ciudadana promedio + credibilidad final + crecimiento.
+            const rule = this.scenario.reappoint;
+            reappointed = survived && inBandCount >= rule.minInBand && inBand(final.inflation) && avgGrowth >= (rule.minAvgGrowth ?? -Infinity);
+            // Puntaje: meses en meta + confianza + credibilidad + no haber apagado el país.
+            const growthScore = clamp(avgGrowth / this.params.potentialGrowth, 0, 1);
+            score = survived ? Math.round(40 * inBandCount / this.turns + 25 * avgTrust / 100 + 20 * final.credibility / 100 + 15 * growthScore) : 0;
         }
-        const stars = !reappointed ? 0 : goals && this.scenario.realPath
-            ? (score >= 100 ? 3 : score >= 75 ? 2 : 1)
-            : (score >= 85 ? 3 : score >= 65 ? 2 : 1);
+        // Llegar al final ya vale una estrella; el resto depende de cómo llegaste.
+        const stars = goals
+            ? (!reappointed ? 0 : this.scenario.realPath ? (score >= 100 ? 3 : score >= 75 ? 2 : 1) : (score >= 85 ? 3 : score >= 65 ? 2 : 1))
+            : (!survived ? 0 : score >= SCORE_STARS[1] ? 3 : score >= SCORE_STARS[0] ? 2 : 1);
 
         // Los logros se calculan fuera del motor (game/achievements.js), con el contexto de la partida.
         const achievements = [];
 
-        return { reappointed, passed: reappointed, survived, gameOver: this.gameOver, inBandCount, score, stars, final, minGrowth, bestStreak: this.bestStreak, achievements, checks };
+        return { reappointed, passed: goals ? reappointed : survived, survived, gameOver: this.gameOver, inBandCount, score, stars, final, minGrowth, bestStreak: this.bestStreak, achievements, checks, avgTrust, avgGrowth };
     }
 }
 

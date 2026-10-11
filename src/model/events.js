@@ -2,7 +2,7 @@
  * Mazos de eventos. Personajes ficticios pero reconocibles del Perú de a pie.
  *
  * - `who`: personaje que la presenta (clave de CHARACTERS).
- * - `shock`: efecto total sobre el trimestre ({ demand, supply, credibility }), en
+ * - `shock`: efecto total sobre el turno ({ demand, supply, credibility }), en
  *   unidades mensuales del modelo; se reparte entre los meses del turno.
  * - `asks`: 'bajar' | 'subir' | null: lo que el personaje pide al Directorio.
  *   Ir en contra suma presión política (`pressure`); ceder cuando no conviene resta credibilidad.
@@ -50,7 +50,7 @@ export const EVENTS = [
     },
     {
         id: 'calma', tier: 1, kind: 'calma', who: 'analista',
-        title: 'Un trimestre tranquilo',
+        title: 'Un respiro sin sobresaltos',
         quote: 'Sin mayores sobresaltos. Buen momento para ver si tus decisiones anteriores están funcionando.',
         shock: {}, asks: null
     },
@@ -166,6 +166,13 @@ export const EVENTS = [
         shock: { demand: 0.6, credibility: -8 }, asks: 'subir', pressure: 0
     },
     {
+        id: 'rumor-viral', tier: 2, kind: 'politica', who: 'cambista',
+        title: 'Rumor viral: «el BCR se queda sin dólares»',
+        quote: 'Un audio de WhatsApp dice que el BCR no tiene dólares. Es falso, pero hoy la cola en mi esquina da la vuelta a la cuadra.',
+        // Con credibilidad alta, el rumor casi no mueve al dólar (ver `credShield` en game/mandate.js).
+        shock: { demand: -0.4, supply: 0.3, credibility: -3 }, credShield: true, asks: null
+    },
+    {
         id: 'gasto-fiscal', tier: 3, kind: 'demanda', who: 'congreso',
         title: 'El Congreso aprueba retiro de fondos de AFP',
         quote: 'Es la plata de la gente y tiene derecho a usarla. Aprobado por amplia mayoría.',
@@ -179,15 +186,50 @@ const EVENT_TAGS = {
     'nino-golpe': ['nino'], 'fed-sube': ['dolar'], elecciones: ['politica'], petroleo: ['combustible'],
     'boom-inmobiliario': ['credito+', 'consumo+'], 'conflicto-minero': ['conflicto-minero'],
     'recesion-mundial': ['exportaciones-', 'cobre-'], 'ministro-presiona': ['politica'], 'gasto-fiscal': ['fiscal+'],
-    'guerra-petroleo': ['combustible'], 'fed-baja': ['credito+']
+    'guerra-petroleo': ['combustible'], 'fed-baja': ['credito+'], 'rumor-viral': ['dolar']
 };
-// Presión sobre el dólar (% de depreciación del sol en el trimestre si nadie interviene).
+// Presión sobre el dólar (% de depreciación del sol en el turno si nadie interviene; el modo libre la escala).
 const EVENT_FX = {
     'cobre-alto': -2.5, 'nino-golpe': 0.8, 'fed-sube': 3.5, elecciones: 2.5, petroleo: 0.8,
     'conflicto-minero': 1.2, 'recesion-mundial': 3, 'ministro-presiona': 1, 'expectativas-suben': 1.5, 'gasto-fiscal': 1,
-    'guerra-petroleo': 2, 'fed-baja': -2.5
+    'guerra-petroleo': 2, 'fed-baja': -2.5, 'rumor-viral': 5
 };
 EVENTS.forEach(e => { e.tags = EVENT_TAGS[e.id] ?? []; e.fx = EVENT_FX[e.id] ?? 0; });
+
+/**
+ * La carta como lección (Game Design): qué golpea, cuál es la tentación del jugador y qué enseña.
+ * La lección se revela en el diario, después de decidir: se aprende de la consecuencia.
+ */
+export const CARD_LESSONS = {
+    'nino-golpe': { hits: 'Suben los alimentos', tempt: 'Subir la tasa de golpe', lesson: 'La tasa no hace llover: hay choques de oferta que solo se esperan, cuidando que no contagien las expectativas.' },
+    'nino-aviso': { hits: 'Se viene un golpe a los alimentos', tempt: 'Actuar antes de tiempo', lesson: 'Un aviso no es un hecho. Prepararse no es lo mismo que sobrerreaccionar.' },
+    'fed-sube': { hits: 'El dólar se dispara', tempt: 'Vender reservas sin parar', lesson: 'Las reservas se acaban: hay que dosificarlas. A veces subir la tasa o un discurso firme calman al dólar sin gastar.' },
+    petroleo: { hits: 'Transporte y precios', tempt: 'Reaccionar con todo', lesson: 'Distinguir un choque temporal de una inflación persistente es la mitad del trabajo.' },
+    'guerra-petroleo': { hits: 'Combustible, transporte y el dólar', tempt: 'Reaccionar con todo', lesson: 'Un choque externo de energía sube los precios, pero la tasa solo evita que se vuelva inflación persistente.' },
+    'cobre-alto': { hits: 'Entran dólares, sube el ánimo', tempt: 'Bajar la tasa para celebrar', lesson: 'Los buenos tiempos también recalientan la economía.' },
+    'cambio-gabinete': { hits: 'Cae la confianza y salta el dólar', tempt: 'Ignorarla', lesson: 'Un discurso firme puede valer más que mover la tasa.' },
+    'mocion-vacancia': { hits: 'Cae la confianza y salta el dólar', tempt: 'Ignorarla', lesson: 'En una crisis política, la credibilidad acumulada del BCR es lo que sostiene al sol.' },
+    'rumor-viral': { hits: 'Corrida hacia el dólar', tempt: 'Entrar en pánico', lesson: 'La credibilidad acumulada es el seguro: un BCR creíble calma con palabras lo que otro calma con reservas.' },
+    elecciones: { hits: 'El Congreso presiona por bajar la tasa', tempt: 'Ceder', lesson: 'El costo de perder autonomía llega después, cuando nadie te cree.' },
+    'elecciones-polarizadas': { hits: 'Todos compran dólares «por si acaso»', tempt: 'Vender reservas sin parar', lesson: 'La incertidumbre política pasa; las reservas gastadas no vuelven solas.' },
+    'ministro-presiona': { hits: 'Presión de Palacio por bajar la tasa', tempt: 'Ceder', lesson: 'El BCR es autónomo por algo: la Constitución lo protege de las encuestas.' },
+    'gasto-fiscal': { hits: 'Más gasto y más demanda', tempt: 'Dejarlo pasar', lesson: 'Cuando el Estado o el Congreso inyectan plata, el BCR tiene que compensar para que no se vuelva inflación.' },
+    'boom-inmobiliario': { hits: 'Crédito y demanda a tope', tempt: 'Dejarlo pasar', lesson: 'Un boom de crédito se frena mejor temprano, con la tasa o con el encaje.' },
+    'expectativas-suben': { hits: 'Las expectativas se desanclan', tempt: 'Esperar que se calmen solas', lesson: 'Cuando nadie cree en la meta, hay que actuar y hablar firme para recuperar la credibilidad.' }
+};
+
+/** Lección genérica por tipo de choque, para las cartas sin una propia (incluidas las de los capítulos). */
+export const KIND_LESSONS = {
+    demanda: { hits: 'La demanda y el crédito', tempt: 'Esperar a que se enfríe solo', lesson: 'La tasa actúa con rezago: con la demanda, conviene anticiparse.' },
+    oferta: { hits: 'Los precios de alimentos o energía', tempt: 'Subir la tasa de golpe', lesson: 'Un choque de oferta pasa solo; lo importante es que no contagie las expectativas.' },
+    politica: { hits: 'La presión política', tempt: 'Ceder', lesson: 'La autonomía del BCR se defiende con resultados y con credibilidad.' },
+    externo: { hits: 'El dólar y el comercio exterior', tempt: 'Reaccionar con todo', lesson: 'No todo lo que pasa afuera se arregla con la tasa: a veces basta con amortiguar.' },
+    calma: { hits: 'Nada en particular', tempt: 'Relajarse', lesson: 'Los meses tranquilos sirven para ver si tus decisiones anteriores están funcionando.' }
+};
+
+export function cardLesson(e) {
+    return CARD_LESSONS[e?.id] ?? KIND_LESSONS[e?.kind] ?? KIND_LESSONS.calma;
+}
 
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map(e => [e.id, e]));
 

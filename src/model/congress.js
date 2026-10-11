@@ -69,7 +69,7 @@ export const QUESTIONS = [
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
         answers: [
             { style: 'tecnica', text: 'El BCR no es el Gobierno. Por la Constitución, nuestra tarea es preservar la estabilidad monetaria: una inflación baja protege el sueldo de todos, y eso también cuida el empleo.' },
-            { style: 'promesa', text: 'Entendemos la preocupación por el empleo. Le aseguro que no volveremos a subir la tasa en el próximo trimestre.' },
+            { style: 'promesa', text: 'Entendemos la preocupación por el empleo. Le aseguro que no volveremos a subir la tasa en nuestra próxima decisión.' },
             { style: 'evasiva', text: 'Es un tema muy importante que estamos evaluando con mucha atención, junto a todos los indicadores de la economía.' }
         ]
     },
@@ -79,7 +79,7 @@ export const QUESTIONS = [
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
         answers: [
             { style: 'tecnica', text: 'Los salarios y los derechos laborales dependen del Ejecutivo y del propio Congreso. El aporte del BCR es que la inflación no se coma esos salarios.' },
-            { style: 'promesa', text: 'Tomamos nota. Nos comprometemos a no subir la tasa en el próximo trimestre para no frenar la creación de empleo.' },
+            { style: 'promesa', text: 'Tomamos nota. Nos comprometemos a no subir la tasa en nuestra próxima decisión para no frenar la creación de empleo.' },
             { style: 'evasiva', text: 'Compartimos plenamente ese objetivo y trabajamos todos los días pensando en el bienestar de los peruanos.' }
         ]
     },
@@ -90,7 +90,7 @@ export const QUESTIONS = [
         source: 'https://rpp.pe/politica/congreso/julio-velarde-explica-a-congresistas-las-funciones-del-bcr-durante-la-comision-de-presupuesto-video-noticia-1588535',
         answers: [
             { style: 'tecnica', text: 'Son más de 80 mil millones de dólares, y no son una caja para gastar: respaldan al sol y protegen al país ante crisis externas. Usarlas para gasto corriente sería repetir los errores de los 80.' },
-            { style: 'promesa', text: 'Vamos a estudiar con el MEF cómo apoyar al país, y mientras tanto no subiremos la tasa en el próximo trimestre.' },
+            { style: 'promesa', text: 'Vamos a estudiar con el MEF cómo apoyar al país, y mientras tanto no subiremos la tasa en nuestra próxima decisión.' },
             { style: 'evasiva', text: 'Las reservas se administran con criterios técnicos, de acuerdo con nuestra Ley Orgánica.' }
         ]
     },
@@ -100,7 +100,7 @@ export const QUESTIONS = [
         source: 'https://peru21.pe/economia/jpp-quiere-que-se-pueda-intervenir-la-autonomia-del-bcr/',
         answers: [
             { style: 'tecnica', text: 'Porque las reservas no son un ahorro del Estado: contra ellas hay depósitos en dólares de bancos y personas. Si se gastan, en la próxima crisis no habría con qué defender al sol.' },
-            { style: 'promesa', text: 'Es una propuesta que podemos conversar. Como señal de buena voluntad, no subiremos la tasa en el próximo trimestre.' },
+            { style: 'promesa', text: 'Es una propuesta que podemos conversar. Como señal de buena voluntad, no subiremos la tasa en nuestra próxima decisión.' },
             { style: 'evasiva', text: 'Es una pregunta compleja que requiere un análisis más profundo. Le haremos llegar un informe.' }
         ]
     },
@@ -110,7 +110,7 @@ export const QUESTIONS = [
         source: 'https://www.infobae.com/peru/2026/09/03/tenso-momento-entre-senador-de-juntos-por-el-peru-y-julio-velarde-ha-hecho-el-trabajo-que-se-le-encomendo-y-punto/',
         answers: [
             { style: 'tecnica', text: 'Justamente para eso existe la autonomía del BCR: para separar la política monetaria del ciclo político. Así la moneda se mantiene estable aunque cambien los gobiernos.' },
-            { style: 'promesa', text: 'Con más coordinación con el Congreso. Por eso le aseguro que no subiremos la tasa en el próximo trimestre.' },
+            { style: 'promesa', text: 'Con más coordinación con el Congreso. Por eso le aseguro que no subiremos la tasa en nuestra próxima decisión.' },
             { style: 'evasiva', text: 'No creo que sea relevante ahora.' }
         ]
     },
@@ -122,7 +122,7 @@ export const QUESTIONS = [
         source: 'https://rpp.pe/economia/economia/bcr-proyecto-de-congelamiento-de-deudas-del-congreso-es-irresponsable-julio-velarde-banco-central-de-reserva-entidades-financieras-noticia-1296089',
         answers: [
             { style: 'tecnica', text: 'Congelar por ley todas las deudas haría que muchos dejen de pagar esperando la norma, y los bancos dejarían de prestar. La salida es reprogramar caso por caso, con garantías como Reactiva Perú.' },
-            { style: 'promesa', text: 'Entendemos la emergencia. No subiremos la tasa en el próximo trimestre y seguiremos inyectando liquidez.' },
+            { style: 'promesa', text: 'Entendemos la emergencia. No subiremos la tasa en nuestra próxima decisión y seguiremos inyectando liquidez.' },
             { style: 'evasiva', text: 'Estamos revisando el proyecto con mucho detalle y enviaremos nuestra opinión técnica.' }
         ]
     },
@@ -133,7 +133,7 @@ export const QUESTIONS = [
         source: 'https://www.mef.gob.pe/es/funciones/833-estadisticas-de-deuda-publica/6982-ministro-mendoza-gobierno-observara-la-ley-contra-la-usura-bancaria-aprobada-por-insistencia-por-el-congreso',
         answers: [
             { style: 'tecnica', text: 'Porque un tope deja sin crédito formal a quienes más riesgo tienen, y los empuja al prestamista informal, que cobra mucho más. Es mejor más competencia y más transparencia en las tasas.' },
-            { style: 'promesa', text: 'Vamos a aplicar la ley con responsabilidad, y como señal no subiremos la tasa de referencia en el próximo trimestre.' },
+            { style: 'promesa', text: 'Vamos a aplicar la ley con responsabilidad, y como señal no subiremos la tasa de referencia en nuestra próxima decisión.' },
             { style: 'evasiva', text: 'Respetamos las decisiones del Congreso y cumpliremos la ley.' }
         ]
     },
@@ -144,7 +144,7 @@ export const QUESTIONS = [
         source: 'https://gestion.pe/economia/dolar-tipo-de-cambio-julio-velarde-repasa-aqui-todo-lo-que-dijo-sobre-el-futuro-del-billete-verde-en-la-comision-de-fiscalizacion-del-congreso-nndc-noticia/',
         answers: [
             { style: 'tecnica', text: 'Estamos vendiendo dólares para evitar saltos bruscos, pero no podemos fijar el precio: la presión viene del miedo por la incertidumbre política. Si esta baja, el sol se fortalecerá.' },
-            { style: 'promesa', text: 'Vamos a hacer todo lo necesario. Mientras tanto, no subiremos la tasa en el próximo trimestre para no golpear más la economía.' },
+            { style: 'promesa', text: 'Vamos a hacer todo lo necesario. Mientras tanto, no subiremos la tasa en nuestra próxima decisión para no golpear más la economía.' },
             { style: 'evasiva', text: 'El tipo de cambio es flexible y lo determina el mercado.' }
         ]
     }
@@ -156,7 +156,7 @@ export const QUESTIONS = [
  */
 export const ANSWER_EFFECTS = {
     tecnica: { pressure: 6, credibility: 4, promise: null, result: 'Tu respuesta fue impecable… y al Congreso no le gustó nada que le explicaran la Constitución. Pero los mercados tomaron nota: el BCR no cede.' },
-    promesa: { pressure: -22, credibility: -2, promise: 'noSubir', result: 'El Congreso se calmó. Pero ahora estás atado: si subes la tasa el próximo trimestre, romperás tu palabra en público.' },
+    promesa: { pressure: -22, credibility: -2, promise: 'noSubir', result: 'El Congreso se calmó. Pero ahora estás atado: si subes la tasa en tu próxima decisión, romperás tu palabra en público.' },
     evasiva: { pressure: -4, credibility: -5, promise: null, result: 'Nadie quedó contento. Los congresistas insisten y los analistas leen tu ambigüedad como duda.' }
 };
 

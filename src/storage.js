@@ -64,6 +64,18 @@ export function unlockAchievements(ids) {
     return fresh;
 }
 
+/** Mejor puntaje del reto de cada semana (por semilla). */
+export function getChallengeBest(seed) {
+    return read().challenge?.[seed] ?? null;
+}
+
+export function saveChallengeScore(seed, score) {
+    const d = read();
+    const best = Math.max(score, d.challenge?.[seed] ?? -1);
+    write({ ...d, challenge: { ...(d.challenge ?? {}), [seed]: best } });
+    return best;
+}
+
 /** Progreso del Modo Historia y del tutorial. */
 export function getStory() {
     const d = read();
@@ -85,9 +97,9 @@ export function saveChapter(id, { passed, stars, score }) {
 
 /** Dificultad: 'facil' (con pistas de color), 'normal' (sin pistas), 'dificil' (sin pistas y con tiempo). */
 export const DIFFICULTIES = {
-    facil: { name: 'Fácil', hints: true, timer: 0, desc: 'Colores y mensajes que te dicen si vas bien. Ideal para aprender.' },
-    normal: { name: 'Normal', hints: false, timer: 0, desc: 'Sin pistas de color: solo los datos, como en el Directorio real.' },
-    dificil: { name: 'Difícil', hints: false, timer: 30, desc: 'Sin pistas y con 30 segundos por decisión. Si no decides, todo sigue como está.' }
+    facil: { name: 'Fácil', hints: true, timer: 120, desc: 'Colores y mensajes que te dicen si vas bien, y 2 minutos por turno. Ideal para aprender.' },
+    normal: { name: 'Normal', hints: false, timer: 45, desc: 'Sin pistas de color y 45 segundos por turno. Si no decides, el BCR se queda callado, y eso también cuesta.' },
+    dificil: { name: 'Difícil', hints: false, timer: 25, desc: 'Sin pistas y solo 25 segundos por turno. La economía no espera.' }
 };
 
 export function getSettings() {

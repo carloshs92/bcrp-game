@@ -5,7 +5,7 @@ import { logo, andeanBand } from './art.js';
 import { openModal, modalOpen, closeModal } from './modal.js';
 import { openGlossary } from './glossary.js';
 import { music, musicButton, bindMusicButton } from '../audio/music.js';
-import { avatar, announceSuspense, showBreaking, animateNumber, shortLabel, createTimer } from './play.js';
+import { avatar, announceSuspense, showBreaking, animateNumber, shortLabel, createTimer } from './common.js';
 import { getSettings } from '../storage.js';
 import { peoplePanel, sectorsReport, regionsReport, peopleBalance, bindPeople, hurtCount } from './people.js';
 import { tabs, bindTabs } from './tabs.js';

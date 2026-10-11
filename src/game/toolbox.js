@@ -42,7 +42,7 @@ export const TOOLBOX = [
     {
         id: 'desdolarizacion', group: 'desdolarizacion', icon: 'scale', unlock: 'nino-2017', needsFx: true, once: true,
         name: 'Programa de desdolarización', short: 'Desdolarizar',
-        desc: 'Encajes adicionales al crédito en dólares durante varios trimestres: al terminar, el dólar pesa mucho menos en los precios.',
+        desc: 'Encajes adicionales al crédito en dólares durante varios turnos: al terminar, el dólar pesa mucho menos en los precios.',
         cost: 'Los bancos se resisten y no rinde hasta dentro de 3 turnos.',
         history: 'Desde 2013 el BCRP aplica encajes adicionales al crédito en dólares, y en 2015 amplió el programa de desdolarización.',
         effect: { turns: 3, pressure: 3, after: { fxPass: 0.6 } }, cooldown: 99

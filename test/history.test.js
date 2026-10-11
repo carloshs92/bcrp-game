@@ -61,9 +61,31 @@ test('2017: subir la tasa ante El Niño (el halcón) rinde peor que la historia 
     assert.ok(hawk < real, `halcón=${hawk} real=${real}`);
 });
 
-test('tutorial: se aprueba subiendo la tasa y no sin moverla', () => {
-    assert.ok(winRate(TUTORIAL, m => m.state.rate + 0.5) > 0.7);
-    assert.ok(winRate(TUTORIAL, m => m.state.rate) < 0.2);
+test('tutorial: tasa y discurso firme juntos ganan; quedarse quieto o solo subir poco, no', () => {
+    const run = (strategy, tone) => {
+        let won = 0;
+        for (let seed = 1; seed <= SEEDS; seed++) {
+            const m = new Mandate(seed, TUTORIAL);
+            while (!m.isOver) m.decide(strategy(m), 0, tone);
+            if (m.evaluate().passed) won++;
+        }
+        return won / SEEDS;
+    };
+    assert.ok(run(m => m.state.rate + 0.25, 'halcon') > 0.8, 'dos acciones');
+    assert.ok(run(m => m.state.rate + 0.25, 'neutral') < 0.4, 'solo la tasa');
+    assert.ok(run(m => m.state.rate, 'neutral') < 0.1, 'esperar siempre');
+});
+
+test('los caminos reales del BCRP caben en 2 acciones por turno', async () => {
+    const { planCost, ACTION_POINTS } = await import('../src/game/actions.js');
+    for (const ch of rateChapters) {
+        let prev = ch.initial.rate;
+        ch.realPath.rate.forEach((r, i) => {
+            const cost = planCost({ move: r - prev, sell: ch.realPath.fxSales?.[i] ?? 0, scripted: i === 1 && !!ch.tools?.length });
+            assert.ok(cost <= ACTION_POINTS, `${ch.id} turno ${i + 1}: ${cost} acciones`);
+            prev = r;
+        });
+    }
 });
 
 test('1990: imprimir o financiar a medias pierde; Comité de Caja + apoyo social gana', () => {

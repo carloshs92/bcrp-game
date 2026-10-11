@@ -1,5 +1,6 @@
 import { scene } from './scenes.js';
 import { award } from './achievementsView.js';
+import { openShare } from './share.js';
 import { CHAPTERS, INTERLUDES, INTERLUDE_SOURCES } from '../model/history.js';
 import { logo, andeanBand } from './art.js';
 import { openModal } from './modal.js';
@@ -112,9 +113,24 @@ function chapterIntro(root, ch, { onHome }) {
 function playChapter(root, ch, { onHome }) {
     const back = () => renderStory(root, { onHome });
     const next = CHAPTERS[CHAPTERS.indexOf(ch) + 1];
-    const actions = r => [
+    const shareAction = (r, earned) => ({
+        id: 'share', label: 'Compartir', run: () => openShare({
+            mode: `Capítulo ${ch.number} · ${ch.year}`, won: r.passed,
+            score: ch.kind === 'hyper' ? `${r.final.inflation.toFixed(0)}%` : r.score,
+            scoreLabel: ch.kind === 'hyper' ? 'inflación del mes' : 'vs. BCRP real',
+            title: r.passed ? `Superé «${ch.title}»` : `«${ch.title}» me ganó… por ahora`,
+            stats: ch.kind === 'hyper'
+                ? [[`${r.final.inflation.toFixed(1)}%`, 'inflación final del mes'], [`${Math.round(r.final.credibility)}`, 'credibilidad'], [r.passed ? '✓' : '✗', 'capítulo superado'], [`${earned.length}`, 'logros']]
+                : [[`${r.final.inflation.toFixed(1)}%`, 'inflación final'], [`${r.stars ?? 0}/3`, 'estrellas'], [`${Math.round(r.final.credibility)}`, 'credibilidad'], [`${earned.length}`, 'logros']],
+            achievements: earned.map(a => a.name),
+            text: `Jugué «${ch.title}» (${ch.year}) en Sol Firme${r.passed ? ' y lo superé' : ''}.`
+        })
+    });
+    const actions = (r, earned = []) => [
         { id: 'exit', label: 'Volver a la línea de tiempo', run: back },
         { id: 'retry', label: 'Reintentar', run: () => playChapter(root, ch, { onHome }) },
+        // El capítulo 1990 tiene su propio veredicto; los demás comparten desde renderVerdict.
+        ...(ch.kind === 'hyper' ? [shareAction(r, earned)] : []),
         ...(r.passed && next ? [{ id: 'next', label: `Siguiente: ${next.year}`, primary: true, run: () => chapterIntro(root, next, { onHome }) }] : [])
     ];
 
@@ -124,7 +140,7 @@ function playChapter(root, ch, { onHome }) {
             onFinish: (h, r) => {
                 saveChapter(ch.id, r);
                 const { earned, fresh } = award({ mode: 'capitulo', chapter: ch.id, m: h, r });
-                renderHyperVerdict(root, h, r, { actions: actions(r), achievements: earned, newAch: fresh });
+                renderHyperVerdict(root, h, r, { actions: actions(r, earned), achievements: earned, newAch: fresh });
             }
         });
         return;
@@ -138,8 +154,9 @@ function playChapter(root, ch, { onHome }) {
             const { earned, fresh } = award({ mode: 'capitulo', chapter: ch.id, m, r });
             const go = r.gameOver && GAME_OVER[r.gameOver];
             renderVerdict(root, m, r, {
-                title: go ? go.title : r.passed ? '¡Capítulo superado!' : 'No lograste los objetivos',
-                text: go ? go.text : r.passed
+                mode: `Historia · ${ch.year}`,
+                title: go ? 'Fin anticipado del capítulo' : r.passed ? '¡Capítulo superado!' : 'No lograste los objetivos',
+                text: go ? 'Compara tus decisiones con las del BCRP real y vuelve a intentarlo.' : r.passed
                     ? `Tu desempeño frente al BCRP real, con los mismos imprevistos: ${r.score}%. ${r.score >= 100 ? '¡Lo hiciste igual o mejor que la historia!' : 'Buen trabajo, aunque el BCRP real mantuvo la inflación más cerca de la meta.'}`
                     : 'Revisa los objetivos y compara tus decisiones con las del BCRP real.',
                 reality: ch.reality,
@@ -151,7 +168,7 @@ function playChapter(root, ch, { onHome }) {
                     [`${Math.round(r.final.credibility)}`, 'credibilidad final'],
                     [`${m.stats.surprises}`, 'imprevistos']
                 ],
-                actions: actions(r)
+                actions: actions(r, earned)
             });
         }
     });
