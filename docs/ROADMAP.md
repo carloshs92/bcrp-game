@@ -1,5 +1,8 @@
 # Sol Firme · Roadmap
 
+
+> **Octubre 2026: se rehace la experiencia de juego.** Ver [`docs/PLAN-REHACER.md`](PLAN-REHACER.md). Lo que sigue en este roadmap describe fases anteriores; sus piezas de interfaz (tablero, palancas, diario con pestañas) se reemplazan.
+
 _Actualizado: 30 de septiembre de 2026 · versión compartible en Claude Docs_
 
 Sol Firme ya es fiel a la realidad peruana (**8.5/10**), pero todavía no es divertido (**4/10**). Este roadmap busca subir la diversión sin sacrificar realismo. La idea central es pasar de "elegir un número" a "armar una estrategia".
