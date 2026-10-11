@@ -31,7 +31,7 @@ test('la misma semilla produce la misma partida', () => {
     assert.equal(play(), play());
 });
 
-test('un mandato completo tiene 12 trimestres', () => {
+test('un mandato libre tiene 12 meses', () => {
     const m = new Mandate(7);
     while (!m.isOver) { answerCongress(m); m.decide(staffRecommendation(m.state)); }
     assert.equal(m.quarter, QUARTERS, `terminó antes: ${m.gameOver}`);

@@ -12,7 +12,7 @@ const DICHOS = [
     'Si el dólar sube, Pepe el cambista ya lo sabe.'
 ];
 
-export function renderTitle(root, { story, record, settings, onTutorial, onStory, onFree, onExpress, onIntro, onSettings, onAchievements, achievements }) {
+export function renderTitle(root, { story, record, settings, onTutorial, onStory, onFree, onExpress, onChallenge, challenge, onIntro, onSettings, onAchievements, achievements }) {
     root.innerHTML = `
     <main class="title-screen">
       <div class="title-card">
@@ -21,22 +21,25 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
         <h1>Sol Firme</h1>
         <div class="tagline">Tú diriges el BCR. Todo el Perú te mira.</div>
         <div class="dicho">«${DICHOS[Math.floor(Math.random() * DICHOS.length)]}»</div>
-        <p>Siéntate en el Directorio del BCR. Enfrenta la hiperinflación de 1990, la crisis de 2008, El Niño costero, la pandemia y la inflación de 2022. ¿Harías lo mismo que el BCRP?</p>
+        <p>La economía se mueve sola, todo el mundo opina y tus herramientas tardan en hacer efecto. Mantén la inflación entre 1% y 3% sin apagar el país, y revive las cinco crisis que marcaron al BCR.</p>
         <div class="modes">
           <button class="mode ${story.tutorialDone ? '' : 'primary'}" data-tutorial>
-            <span class="mode-ico">${icon('cap', { size: 22 })}</span><strong>Tutorial</strong><small>3 turnos guiados · 5 minutos</small>${story.tutorialDone ? '<span class="pill good">Completado</span>' : '<span class="pill info">Empieza aquí</span>'}
+            <span class="mode-ico">${icon('cap', { size: 22 })}</span><strong>Tutorial</strong><small>4 meses guiados · 5 minutos</small>${story.tutorialDone ? '<span class="pill good">Completado</span>' : '<span class="pill info">Empieza aquí</span>'}
           </button>
           <button class="mode ${story.tutorialDone ? 'primary' : ''}" data-story>
             <span class="mode-ico">${icon('book', { size: 22 })}</span><strong>Modo Historia</strong><small>5 capítulos de la historia monetaria del Perú</small>
           </button>
           <button class="mode" data-free>
-            <span class="mode-ico">${icon('dice', { size: 22 })}</span><strong>Modo Libre</strong><small>Un mandato de 3 años con eventos al azar</small>
+            <span class="mode-ico">${icon('dice', { size: 22 })}</span><strong>Modo Libre</strong><small>12 meses como presidente del BCR · 10 a 15 minutos</small>
           </button>
           <button class="mode" data-express>
-            <span class="mode-ico">${icon('flame', { size: 22 })}</span><strong>Mandato exprés</strong><small>6 turnos · unos 5 minutos · al toque</small>
+            <span class="mode-ico">${icon('flame', { size: 22 })}</span><strong>Mandato exprés</strong><small>6 meses · unos 5 minutos · al toque</small>
+          </button>
+          <button class="mode" data-challenge>
+            <span class="mode-ico">${icon('people', { size: 22 })}</span><strong>Reto de la semana ${challenge?.week ?? ''}</strong><small>La misma partida para todos: compara tu puntaje${challenge?.best != null ? ` · tu mejor: ${challenge.best}` : ''}</small>
           </button>
         </div>
-        ${record.played ? `<p class="record">Modo libre: ${record.played} mandatos · ratificado ${record.reappointed} · mejor puntaje ${record.bestScore}</p>` : ''}
+        ${record.played ? `<p class="record">Mandatos jugados: ${record.played} · ratificado ${record.reappointed} · mejor puntaje ${record.bestScore}</p>` : ''}
         <div class="title-links">
           <button class="btn btn-ghost" data-settings>Configuración · Dificultad: ${settings.name}</button>
           <button class="btn btn-ghost" data-intro>¿Qué es el BCR?</button>
@@ -49,6 +52,7 @@ export function renderTitle(root, { story, record, settings, onTutorial, onStory
     root.querySelector('[data-story]').addEventListener('click', onStory);
     root.querySelector('[data-free]').addEventListener('click', onFree);
     root.querySelector('[data-express]').addEventListener('click', onExpress);
+    root.querySelector('[data-challenge]').addEventListener('click', onChallenge);
     root.querySelector('[data-ach]').addEventListener('click', onAchievements);
     root.querySelector('[data-intro]').addEventListener('click', onIntro);
     root.querySelector('[data-settings]').addEventListener('click', onSettings);

@@ -125,7 +125,10 @@ const CAST = {
     meteo: { skin: '#c68a5e', hair: ['bun', '#2a1a12'], extra: ['glasses', 'cloud'] },
     agricultor: { skin: '#9c6440', hair: null, extra: ['sombrero'] },
     prensa: { skin: '#d6a07a', hair: null, extra: ['fedora', 'glasses'] },
-    minero: { skin: '#b07a52', hair: null, extra: ['helmet'] }
+    minero: { skin: '#b07a52', hair: null, extra: ['helmet'] },
+    kevin: { skin: '#b97a50', hair: null, extra: [['cap', '#c2185b']] },
+    valeria: { skin: '#d6a07a', hair: ['bun', '#3a2416'], extra: ['glasses'] },
+    congresista: { skin: '#c9926a', hair: ['short', '#1c1410'], extra: ['sash', 'tie'] }
 };
 
 export function bust(who, color, size = 48) {

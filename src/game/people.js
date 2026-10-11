@@ -291,7 +291,7 @@ export function strongestVoice(moods) {
 export function rateTradeoff(move) {
     if (move > 0) return {
         win: 'Ahorristas, jubilados y, si la inflación baja, las familias que viven del día.',
-        lose: 'Quienes tienen deudas, las mypes y el empleo en los próximos trimestres.',
+        lose: 'Quienes tienen deudas, las mypes y el empleo en los próximos meses.',
         winWho: ['ahorristas', 'jubilados', 'familias'], loseWho: ['deudores', 'mypes', 'empleo']
     };
     if (move < 0) return {
@@ -346,3 +346,6 @@ export function humanBalance(avg) {
             : 'Lograste un equilibrio poco común. En la historia real, las crisis casi siempre obligaron a elegir quién cargaba con el costo.'
     };
 }
+
+/** Elige una frase de la lista evitando las últimas usadas (la comparte el elenco de game/cast.js). */
+export { pick as pickPhrase };

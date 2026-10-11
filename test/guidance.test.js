@@ -53,11 +53,10 @@ test('comunicado: contradecirlo cuesta credibilidad y cumplirlo suma', () => {
     assert.equal(kept.m.stats.guidanceKept, 1);
 });
 
-test('comunicado: el tutorial no lo usa y el BCRP real (neutral) sigue siendo la referencia', () => {
-    const t = new Mandate(7, TUTORIAL);
-    assert.equal(t.guidanceOn, false);
-    const rec = t.decide(t.state.rate, 0, 'halcon');
-    assert.equal(rec.tone, 'neutral');
+test('comunicado: el tutorial enseña el discurso; 1990 (sin metas de inflación) no lo usa', () => {
+    assert.equal(new Mandate(7, TUTORIAL).guidanceOn, true);
+    const off = new Mandate(7, { ...TUTORIAL, guidance: false });
+    assert.equal(off.decide(off.state.rate, 0, 'halcon').tone, 'neutral');
 });
 
 test('comunicado: hablar siempre como paloma no es una estrategia ganadora', () => {

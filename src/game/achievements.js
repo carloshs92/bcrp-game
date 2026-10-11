@@ -5,6 +5,8 @@
  * ctx = { mode: 'libre' | 'expres' | 'capitulo' | 'tutorial', chapter, m, r, story }
  *  m: el motor (Mandate o HyperChapter), r: su evaluate(), story: capítulos superados tras guardar.
  */
+import { archetypeId } from './endings.js';
+
 const STORY_IDS = ['hiper-1990', 'crisis-2008', 'nino-2017', 'pandemia-2020', 'inflacion-2022'];
 const survived = c => !!c.r?.survived;
 const freeMode = c => c.mode === 'libre' || c.mode === 'expres';
@@ -25,8 +27,8 @@ export const ACHIEVEMENTS = [
     { id: 'chamba', icon: 'briefcase', name: 'Chamba es chamba', text: 'Te ratificaron en el modo libre: tres años más en el Directorio.', check: c => c.mode === 'libre' && c.r?.reappointed },
     { id: 'al-toque', icon: 'flame', name: 'Al toque', text: 'Ganaste un mandato exprés.', check: c => c.mode === 'expres' && c.r?.reappointed },
     { id: 'aterrizaje', icon: 'down', name: 'Aterrizaje suave', text: 'Terminaste en la meta con la economía creciendo sobre 2%. Más suave que llegada al Jorge Chávez.', check: c => freeMode(c) && c.r?.reappointed && c.r.final.growth >= 2 },
-    { id: 'racha', icon: 'up', name: 'Seis al hilo', text: 'Seis trimestres seguidos con la inflación en la meta.', check: c => (c.r?.bestStreak ?? 0) >= 6 },
-    { id: 'ni-un-jalado', icon: 'cap', name: 'Ni un solo jalado', text: 'Todos los trimestres de un mandato con la inflación en la meta.', check: c => survived(c) && c.m?.turns && c.r.inBandCount === c.m.turns },
+    { id: 'racha', icon: 'up', name: 'Seis al hilo', text: 'Seis turnos seguidos (meses o trimestres) con la inflación en la meta.', check: c => (c.r?.bestStreak ?? 0) >= 6 },
+    { id: 'ni-un-jalado', icon: 'cap', name: 'Ni un solo jalado', text: 'Todos los turnos de un mandato con la inflación en la meta.', check: c => survived(c) && c.m?.turns && c.r.inBandCount === c.m.turns },
     { id: 'yapa', icon: 'target', name: 'Con yapa', text: 'Terminaste con la inflación clavada en 2% (±0.1).', check: c => survived(c) && c.r.final && Math.abs(c.r.final.inflation - 2) <= 0.1 },
     { id: 'autonomo', icon: 'shield', name: 'Ni el MEF ni el Congreso', text: 'Resististe la presión política sin ceder ni una vez.', check: c => survived(c) && c.m?.stats?.resisted >= 2 && c.m.stats.ceded === 0 },
     { id: 'gradual', icon: 'equal', name: 'Despacito y buena letra', text: 'Moviste la tasa varias veces, pero nunca más de 50 pb de golpe.', check: c => survived(c) && freeMode(c) && c.m?.stats?.bigMoves === 0 && moves(c) >= 3 },
@@ -40,6 +42,12 @@ export const ACHIEVEMENTS = [
     { id: 'pepe', icon: 'dollar', name: 'Pepe el cambista te quiere', text: 'Terminaste con el dólar casi igual que al inicio (±3%).', check: c => survived(c) && c.m?.fx && c.m.fxStart && Math.abs(c.m.fx.rate / c.m.fxStart - 1) <= 0.03 },
 
     { id: 'chamba-formal', icon: 'briefcase', name: 'Chamba con planilla', text: 'Terminaste el mandato con menos informalidad que al inicio.', check: c => survived(c) && c.m?.informal != null && c.m.informal < c.m.informalBase - 0.5 },
+
+    // Arquetipos y consecuencias (rediseño)
+    { id: 'guardian', icon: 'shield', name: 'Guardián del sol', text: 'Terminaste como El Guardián con tres estrellas.', check: c => c.r?.stars === 3 && c.m?.history && archetypeId(c.m) === 'guardian' },
+    { id: 'sin-balas', icon: 'vault', name: 'Sin balas', text: 'Vendiste dólares hasta quedarte sin reservas. Pepe el cambista te manda saludos.', check: c => c.r?.gameOver === 'reservas' },
+    { id: 'te-alcanzo', icon: 'flame', name: 'Te alcanzó', text: 'Cinco cartas de consecuencia en un solo mandato: lo que haces hoy vuelve.', check: c => (c.m?.consequenceLog?.length ?? 0) >= 5 },
+    { id: 'paciencia', icon: 'equal', name: 'Paciencia de caserita', text: 'Esperaste tres turnos seguidos y aun así terminaste en la meta.', check: c => survived(c) && c.r.final && c.r.final.inflation >= 1 && c.r.final.inflation <= 3 && /(1,1,1)/.test((c.m?.records ?? []).map(r => r.waited ? 1 : 0).join(',')) },
 
     // Congreso
     { id: 'ni-roche', icon: 'congress', name: 'Te citaron y ni roche', text: 'Te citaron tres veces al Congreso y terminaste el mandato.', check: c => survived(c) && (c.m?.congress?.citations ?? 0) >= 3 },

@@ -25,6 +25,10 @@ export const TERMS = {
     hiperinflacion: ['Hiperinflación', 'Inflación descontrolada, de más de 50% al mes. El Perú la vivió entre 1988 y 1990: en 1990 los precios subieron 7,650% en el año.'],
     emision: ['Emisión para financiar al Estado', 'Cuando el banco central imprime dinero para pagar los gastos del Gobierno. Hay más soles persiguiendo los mismos bienes, y los precios suben. Desde 1993 la Constitución le prohíbe al BCRP financiar al Tesoro Público.'],
     reactiva: ['Reactiva Perú', 'Programa de 2020: los bancos dieron créditos a empresas con garantía del Estado y el BCRP les dio la liquidez para hacerlo. Buscaba que las empresas pudieran pagar sueldos y proveedores durante la cuarentena.'],
+    confianza: ['Confianza ciudadana', 'Lo que la gente piensa del BCR: sube cuando los precios están tranquilos y hay chamba, y baja con la inflación alta, los despidos o un dólar que salta. En el juego no mueve la economía, pero cuenta en tu puntaje y en lo que dicen las redes.'],
+    niebla: ['La niebla de la proyección', 'Nadie sabe con exactitud qué pasará: la proyección es un rango, no un número. Con más credibilidad el rango se estrecha, porque la gente reacciona como el BCR espera. Y siempre puede aparecer un imprevisto que nadie veía venir.'],
+    acciones: ['Dos acciones por turno', 'Cada turno puedes usar hasta dos palancas: la tasa, los dólares, el discurso o el encaje. No hacer nada también es una decisión: ahorras reservas y no te comprometes, pero la economía sigue moviéndose sin ti.'],
+    encaje: ['Encaje bancario', 'La parte de los depósitos que los bancos deben guardar en el BCR. Si sube, los bancos prestan menos; si baja, prestan más. Es la herramienta más peruana del BCR: la usó con fuerza en 2008 y para desdolarizar el crédito desde 2013.'],
     directorio: ['Directorio', 'Órgano que dirige el BCRP. Se reúne una vez al mes, según un calendario publicado, para decidir la tasa de referencia y la anuncia en un comunicado.']
 };
 

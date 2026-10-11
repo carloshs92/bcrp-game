@@ -15,20 +15,30 @@ const ev = (id, who, title, quote, shock = {}, extra = {}) => ({ id, who, title,
 export const TUTORIAL = {
     id: 'tutorial',
     kind: 'rate',
-    title: 'Tutorial: tu primer Programa Monetario',
-    guidance: false, // el comunicado se aprende después
+    title: 'Tutorial: tus primeros cuatro meses',
     year: 'Hoy',
-    turns: 3,
-    labels: ['T1', 'T2', 'T3'],
-    initial: { rate: 4.25, outputGap: 0.8, core: 2.8, supply: 0.2, expectations: 2.5, credibility: 80 },
+    turns: 4,
+    stepsPerTurn: 1, // como en el modo libre: un turno es una reunión mensual
+    turnUnit: 'mes',
+    horizon: 6,
+    shockScale: 0.45,
+    startYear: 2027,
+    startMonth: 0,
+    hikePressure: 3,
+    initial: { rate: 4.25, outputGap: 0.8, core: 3.0, supply: 0.3, expectations: 2.7, credibility: 75 },
+    fx: { rate: 3.75, reserves: 80, floor: 0.6 },
     script: [
-        ev('t1', 'gamarra', 'Gamarra no para de vender', '¡Estamos vendiendo como en campaña navideña! La gente saca préstamos para todo, caserito.', { demand: 0.9 }, { kind: 'demanda' }),
-        ev('t2', 'ministro', 'El MEF quiere reactivar', 'Una tasa más baja ayudaría a que la inversión despegue. ¿Qué dice el BCR?', { demand: 0.3 }, { kind: 'politica', asks: 'bajar', pressure: 8 }),
-        ev('t3', 'analista', 'Un trimestre tranquilo', 'Sin mayores sobresaltos. Mira si tus decisiones anteriores están funcionando.', {}, { kind: 'calma' })
+        ev('t1', 'gamarra', 'Gamarra no para de vender', '¡Estamos vendiendo como en campaña navideña! La gente saca préstamos para todo, caserito.', { demand: 0.6 }, { kind: 'demanda' }),
+        ev('t2', 'ministro', 'El MEF quiere reactivar', 'Una tasa más baja ayudaría a que la inversión despegue. ¿Qué dice el BCR?', { demand: 0.2 }, { kind: 'politica', asks: 'bajar', pressure: 8 }),
+        ev('t3', 'caserita', 'Huaicos: el limón cuesta el triple', 'Las lluvias cortaron la carretera y el limón no llega. ¿El BCR va a hacer algo, hijito?', { supply: 0.5, demand: -0.2 }, { kind: 'oferta', asks: 'subir' }),
+        ev('t4', 'cambista', 'La Fed sube tasas y el dólar se dispara', '¡Dólar, dólar! Hoy todos quieren comprar, jefe. Lo importado se va a poner más caro.', { supply: 0.2, demand: -0.1 }, { kind: 'externo' })
     ],
-    // El segundo turno siempre trae un imprevisto: así el jugador lo conoce en el tutorial.
-    surprises: { 1: 'huaico-central' },
-    goals: [{ type: 'finalInflationMax', value: 3.3, label: 'Terminar con la inflación en 3.3% o menos' }]
+    // El segundo mes siempre trae un imprevisto: así el jugador lo conoce en el tutorial.
+    surprises: { 1: 'balon-gas' },
+    goals: [
+        { type: 'finalInflationMax', value: 3.5, label: 'Terminar con la inflación en 3.5% o menos' },
+        { type: 'minCredibility', value: 60, label: 'Que la credibilidad no baje de 60' }
+    ]
 };
 
 export const CHAPTERS = [
@@ -294,7 +304,7 @@ export const INTERLUDE_SOURCES = [
 
 // Etiquetas regionales de los eventos guionados (ver model/regions.js).
 const SCRIPT_TAGS = {
-    t1: ['consumo+'], t2: ['fiscal+'],
+    t1: ['consumo+'], t2: ['fiscal+'], t3: ['lluvias'], t4: ['dolar'],
     '08b': ['combustible'], '08c': ['consumo+'], '08d': ['exportaciones-', 'cobre-'], '09a': ['exportaciones-'], '09c': ['cobre+'], '09d': ['consumo+'],
     '17a': ['nino'], '17b': ['agro+'], '17c': ['fiscal+'],
     '20a': ['cuarentena'], '20b': ['cuarentena'], '20c': ['reapertura'], '20d': ['reapertura'],
@@ -305,6 +315,7 @@ const SCRIPT_FX = {
     // Calibradas para que, replicando la tasa y las ventas de dólares del BCRP, el modelo
     // reproduzca la variación trimestral real del tipo de cambio (BCRPData PN01234PM):
     // presión = depreciación real + 1.2 × cambio de tasa + ventas (US$ miles de millones).
+    t4: 4,
     '08a': -5.4, '08b': 3.5, '08c': 5, '08d': 8, '09a': 2.9, '09b': -9.4, '09c': -4.8, '09d': -1.1,
     '21c': 8.9, '21d': 1.6, '22a': -5.6, '22b': 2, '22c': 5.5, '22d': -0.9, '23a': -1, '23b': -3.4, '23c': 1.9, '23d': -0.8
 };
