@@ -149,6 +149,7 @@ export const FREE_SCENARIO = {
     limits: { inflation: 8, inflationTurns: 2 },
     board: true, // el Directorio vota tus propuestas
     informal: 70.2, // % de empleo informal (INEI, EPEN 2025)
+    midterm: { turn: 5 }, // crisis de mitad de mandato: mes 6 (índice 5)
     title: 'Modo libre',
     turns: 12,
     startYear: 2027,
@@ -163,7 +164,9 @@ export const FREE_SCENARIO = {
     // mayor parte de las reservas como seguro, y lo que puede usar en un mandato es limitado.
     fx: { rate: 3.75, reserves: 80, floor: 0.6 },
     // Ratificación: inflación en meta Y sin apagar el país (sin esto, apretar siempre ganaba el 74% de las veces).
-    reappoint: { minInBand: 8, minAvgGrowth: 1.8 }
+    // minInBand en 9 (ajuste del 10 oct, Fase 1 del rehacer): con 8, copiar al staff sin ningún
+    // criterio adicional volvía a cruzar el 50% de reelección al medir con más semillas (300+).
+    reappoint: { minInBand: 9, minAvgGrowth: 1.8 }
 };
 
 // Compatibilidad: el modo libre sigue exponiendo estas constantes.
@@ -350,6 +353,15 @@ export default class Mandate {
             return this.take(e);
         }
         if (!this.scenario.randomEvents) return EVENT_BY_ID.calma;
+        // Crisis de mitad de mandato: una carta fuerte (tier 3) todavía no usada, marcada aparte.
+        if (this.scenario.midterm && this.quarter === this.scenario.midterm.turn) {
+            const pool = EVENTS.filter(e => e.tier === 3 && !this.used.has(e.id));
+            if (pool.length) {
+                const e = pool[Math.floor(this.rng() * pool.length)];
+                this.take(e);
+                return { ...e, midterm: true };
+            }
+        }
         // La intensidad sube con el mandato: año 1 suave, año 2 medio, año 3 fuerte.
         const year = Math.min(2, Math.floor(this.quarter / (this.scenario.yearLength ?? 4)));
         const weights = [[1, 0, 0], [0.35, 0.65, 0], [0.1, 0.4, 0.5]][year];
@@ -921,6 +933,11 @@ export default class Mandate {
         c.pending = null;
         c.citations += 1;
         return { question: q, answer, fx, before, after: { pressure: this.pressure, credibility: this.state.credibility }, followUp: answer.style === 'evasiva' ? FOLLOW_UP : null };
+    }
+
+    /** Confirma (cierra) la carta de consecuencia pendiente. Su efecto ya se aplicó al generarla. */
+    ackConsequence() {
+        this.consequences = [];
     }
 
     evaluate() {

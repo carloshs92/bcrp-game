@@ -20,7 +20,7 @@ export function isoWeek(date = new Date()) {
  */
 export function challengeScenario() {
     return {
-        ...FREE_SCENARIO, id: 'reto', turns: 6, yearLength: 2,
+        ...FREE_SCENARIO, id: 'reto', turns: 6, yearLength: 2, midterm: null,
         toolUnlock: { 'encaje-sube': 2, 'encaje-baja': 2 },
         reappoint: { ...FREE_SCENARIO.reappoint, minInBand: 4 },
         toolbox: ['encaje-sube', 'encaje-baja', 'repos'], showLockedTools: false

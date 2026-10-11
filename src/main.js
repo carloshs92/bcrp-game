@@ -95,7 +95,8 @@ function free({ express = false, challenge = false } = {}) {
         toolbox: [...new Set([...unlockedTools(getStory().chapters), 'encaje-sube', 'encaje-baja'])],
         showLockedTools: true,
         // Exprés: medio mandato, con las cartas subiendo de intensidad el doble de rápido.
-        ...(express ? { id: 'expres', turns: 6, yearLength: 2, toolUnlock: { 'encaje-sube': 2, 'encaje-baja': 2 }, reappoint: { ...FREE_SCENARIO.reappoint, minInBand: 4 } } : {})
+        // Es de 6 meses: no le cabe la crisis de mitad de mandato de un mandato de 12.
+        ...(express ? { id: 'expres', turns: 6, yearLength: 2, midterm: null, toolUnlock: { 'encaje-sube': 2, 'encaje-baja': 2 }, reappoint: { ...FREE_SCENARIO.reappoint, minInBand: 4 } } : {})
     };
     const mode = express ? 'Mandato exprés' : challenge ? 'Reto de la semana' : 'Modo libre';
     const go = () => playScenario(root, scenario, {

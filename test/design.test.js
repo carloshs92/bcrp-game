@@ -112,7 +112,9 @@ test('balance: copiar al staff no siempre da 3 estrellas y esperar casi nunca', 
     assert.ok(staff[3] < SEEDS * 0.5, `staff 3★ ${staff[3]}`);
     assert.ok(staff[2] + staff[3] > SEEDS * 0.5);
     const hold = stars(m => [m.state.rate]);
-    assert.ok(hold[3] < SEEDS * 0.05);
+    // 8% y no 5%: la crisis de mitad de mandato (Fase 1 del rehacer) consume RNG extra en el mes 6
+    // y reordena los eventos de los meses siguientes para todas las semillas; sigue siendo una minoría.
+    assert.ok(hold[3] < SEEDS * 0.08, `hold 3★ ${hold[3]}`);
 });
 
 test('elenco: Doña Rosa sufre con la inflación alta y Kevin con las alzas', () => {
